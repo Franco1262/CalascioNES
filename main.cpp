@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
             if(bus->get_input())
             {
-                bus->set_input(doInput()); 
+                bus->set_input(doInput());
             }
         }
         current_frame = ppu->get_frame();        

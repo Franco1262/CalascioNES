@@ -55,10 +55,12 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
     {
         if(address == 0x4016)
         {
-            handle_input = true;
             strobe = value & 1;
             if(strobe)
-                shift_register_controller = controller_state;     
+            {
+                handle_input = true;
+                shift_register_controller = controller_state; 
+            }    
         }
 
     }
@@ -96,7 +98,8 @@ bool Bus::get_nmi()
 
 void Bus::set_input(uint8_t state)
 {
-    controller_state = state;   
+    controller_state = state; 
+    handle_input = false;  
 }
 
 bool Bus::get_input()
