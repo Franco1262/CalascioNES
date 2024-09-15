@@ -1,0 +1,7 @@
+        .vscode/
+        ROMS/
+        SDL2-2.30.6/
+        TESTS/
+        TODO.txt
+        json/
+        main.exe
