@@ -24,6 +24,7 @@ class Bus
         MIRROR getMirror();
 
         void set_input(uint8_t state);
+        bool get_input();
     private:
         std::shared_ptr<PPU> ppu;
         std::shared_ptr<Cartridge> cart;
@@ -31,6 +32,7 @@ class Bus
         bool NMI = false;
         uint8_t controller_state;
         uint8_t shift_register_controller;
+        bool handle_input;
         bool strobe;
 
 

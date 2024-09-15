@@ -73,14 +73,6 @@ class PPU
         uint8_t scanline_sprite_buffer[0x30];
 
 
-        struct Sprite
-        {
-            uint16_t y_coord;
-            uint16_t tile_index;
-            uint16_t attribute;
-            uint16_t x_coord;
-        } sprites_shifter[8];
-
         //Flags
         bool even_odd;
         bool vblank;

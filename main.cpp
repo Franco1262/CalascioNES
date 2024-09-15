@@ -56,14 +56,16 @@ int main(int argc, char *argv[])
             ppu->tick();
             ppu->tick();
             ppu->tick();
+
+            if(bus->get_input())
+            {
+                bus->set_input(doInput()); 
+            }
         }
-        current_frame = ppu->get_frame();
-        bus->set_input(doInput());         
+        current_frame = ppu->get_frame();        
         draw_frame(ppu);
     }
 
-    char i;
-    std::cin >> i;
     return 0;
 }
 
@@ -242,7 +244,7 @@ uint8_t doInput()
 				break;
 		}
 	}
-    uint8_t state = 0;
+    uint8_t state = 0x00;
     const uint8_t *keystate = SDL_GetKeyboardState(NULL);
     
     if (keystate[SDL_SCANCODE_KP_7])  state |= 1 << 0;  // A button
