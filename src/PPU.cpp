@@ -10,7 +10,7 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
     odd = false;
     frame = false;
     screen = std::vector<uint32_t>( 256*240 );
-    screen2 = std::vector<uint8_t>( 256*240 );
+    scanline_buffer = std::vector<uint8_t>( 256 );
     pattern_buffer = std::vector<uint32_t>( 128*128 );
     nametable_buffer = std::vector<uint32_t>( 256 * 240 );
     sprite_buffer = std::vector<uint32_t>(64 * 64);
@@ -150,22 +150,22 @@ uint8_t PPU::read(uint16_t address)
         if(bus->getMirror() == MIRROR::HORIZONTAL)
         {
             if((address >= 0x2000) && (address < 0x2800))
-                data = nametable[address % 0x400]; 
+                data = nametable[address & 0x3FF]; 
             
             else if((address >= 0x2800) && (address < 0x3000))          
-                data = nametable[0x400 + (address % 0x400)];                  
+                data = nametable[0x400 + (address & 0x3FF)];                  
         }
         
          if(bus->getMirror() == MIRROR::VERTICAL)
         {
             if( (address >= 0x2000) && (address < 0x2400))
-                data = nametable[address % 0x400];
+                data = nametable[address & 0x3FF];
             else if((address >= 0x2800) && (address < 0x2C00))
-                data = nametable[address % 0x400];
+                data = nametable[address & 0x3FF];
             else if((address >= 0x2400) && (address < 0x2800))
-                data = nametable[0x400 + (address % 0x400)];
+                data = nametable[0x400 + (address & 0x3FF)];
             else if (address >= 0x2C00 && address <= 0x2FFF)
-                data = nametable[0x400 + (address % 0x400)];       
+                data = nametable[0x400 + (address & 0x3FF)];       
         } 
     } 
 
@@ -189,22 +189,22 @@ void PPU::write(uint16_t address, uint8_t value)
         if(bus->getMirror() == MIRROR::HORIZONTAL)
         {
             if((address >= 0x2000) && (address < 0x2800))            
-                nametable[address % 0x400] = value;            
+                nametable[address & 0x3FF] = value;            
 
             else if((address >= 0x2800) && (address < 0x3000))           
-                nametable[0x400 + (address % 0x400)] = value;                   
+                nametable[0x400 + (address & 0x3FF)] = value;                   
         }
         
          if(bus->getMirror() == MIRROR::VERTICAL)
         {
             if((address >= 0x2000) && (address < 0x2400))
-                nametable[address % 0x400] = value;
+                nametable[address & 0x3FF] = value;
             else if((address) >= 0x2800 && (address < 0x2C00))
-                nametable[address % 0x400] = value;
+                nametable[address & 0x3FF] = value;
             else if((address >= 0x2400) && (address < 0x2800))
-                nametable[0x400 + (address % 0x400)] = value;
+                nametable[0x400 + (address & 0x3FF)] = value;
             else if (address >= 0x2C00 && address <= 0x2FFF)
-                nametable[0x400 + (address % 0x400)] = value;
+                nametable[0x400 + (address & 0x3FF)] = value;
         } 
     }  
 
@@ -306,8 +306,8 @@ std::vector<uint32_t> PPU::get_nametable(int m)
         {
             nametable_id = nametable[(m*0x400) + i*32 + j];
             uint8_t attribute2 = read(0x23C0 + (bus->getMirror() > 0 ? 0x400 : 0x800)*m + j/4 + (i/4)*8);
-            uint8_t x = ((j % 4) & 0x2) >> 1;
-            uint8_t y = ((i % 4) & 0x2) >> 1;
+            uint8_t x = ((j & 0x3) & 0x2) >> 1;
+            uint8_t y = ((i & 0x3) & 0x2) >> 1;
 
 
             for(int k = 0; k < 8; k++)
@@ -508,14 +508,13 @@ inline void PPU::load_shifters()
     palette_bit_1 = (palette_bit_1 & 0xFF00) | (((attribute >> ((coarse_x_bit1 * 2) + (coarse_y_bit1 * 4) + 1)) & 0x01) > 0 ? 0xFF : 0x00);
 }
 
+ 
 void PPU::draw_sprite_pixel()
 {
     uint8_t pixel;
 
     for(int i = 0; i < 8; i++)
     {
-
-        uint8_t y_coord = scanline_sprite_buffer[i * 6];
         uint8_t tile_id = scanline_sprite_buffer[(i * 6) + 1];
         uint8_t attribute_sprite = scanline_sprite_buffer[(i * 6) + 2];
         uint8_t x_coord = scanline_sprite_buffer[(i * 6) + 3];
@@ -546,8 +545,22 @@ void PPU::draw_sprite_pixel()
                 uint32_t x = x_coord + j;
                 uint32_t screen_index = scanline * 256 + x;
 
-                if(pixel != 0x00)   
-                    screen[screen_index] = system_palette[color];
+                if((scanline_buffer[x] & 0x4) == 0)
+                {
+                    if(scanline_buffer[x] == 0x00 && pixel == 0x00)
+                        screen[screen_index] = system_palette[get_palette_color(0, 0)];
+                    else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
+                    {
+                        screen[screen_index] = system_palette[color];
+                        scanline_buffer[x] |= 0x4;
+                    }
+                    else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
+                    {
+                        screen[screen_index] = system_palette[color];
+                        scanline_buffer[x] |= 0x4;
+                    }
+
+                }
             }
         }
     }
@@ -568,7 +581,7 @@ void PPU::draw_background_pixel()
 
     // Update screen2 and screen arrays
     uint32_t index = scanline * 256 + (cycles - 1);
-    screen2[index] = pixel; 
+    scanline_buffer[cycles - 1] = pixel; 
     screen[index] = system_palette[get_palette_color(palette_index & 0x3, pixel)];
 
     uint8_t sprite_row = scanline - scanline_sprite_buffer[0];
@@ -580,7 +593,6 @@ void PPU::draw_background_pixel()
 
 void PPU::check_sprite_0_hit()
 {
-    uint8_t y_coord = scanline_sprite_buffer[0];
     uint8_t x_coord = scanline_sprite_buffer[3];
     uint8_t sprite_lsb = scanline_sprite_buffer[4];
     uint8_t sprite_msb = scanline_sprite_buffer[5]; 
@@ -589,11 +601,10 @@ void PPU::check_sprite_0_hit()
     uint8_t pixel = (((sprite_lsb << offset) & 0x80) >> 7) | (((sprite_msb << offset) & 0x80) >> 6);
 
     uint32_t x = x_coord + offset;
-    uint32_t screen_index = scanline * 256 + x;
 
     if (IS_PPUMASK_SET(PPUMASK) && (x < 256) && !(PPUSTATUS & 0x40))
     {
-        if (pixel != 0x00 && screen2[screen_index] != 0x00)
+        if (pixel != 0x00 && scanline_buffer[x] != 0x00)
         {
             if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
             {
@@ -615,7 +626,7 @@ void PPU::tick()
                 draw_background_pixel();
             shift_bits(); 
 
-            switch(cycles % 8)
+            switch(cycles & 0x7)
             {
                 case 0:
                 {
@@ -683,7 +694,7 @@ void PPU::tick()
 
         if( (cycles > 256) && (cycles < 321) && (scanline != 261))
         {
-            switch(cycles % 8)
+            switch(cycles & 0x7)
             {
                 case 1:
                     scanline_sprite_buffer[(i * 6) ] = secondary_oam[(i * 4)];
@@ -716,7 +727,7 @@ void PPU::tick()
 
         if( (scanline < 240) && ((cycles > 0) && (cycles < 65)))
         {
-            if(cycles % 2 == 1)
+            if(cycles & 1)
                 byte = 0xFF;
             else
             {

@@ -86,7 +86,7 @@ CPU::~CPU() {}
 void CPU::write(uint16_t address, uint8_t value)
 {
     if(address < 0x2000)
-        memory[address % 0x800] = value;
+        memory[address & 0x7FF] = value;
     else if(address == 0x4014)
     {
         OAMDMA = value;
@@ -107,7 +107,7 @@ uint8_t CPU::read(uint16_t address)
     uint8_t value;
     if(address  < 0x2000)
     {
-        value = memory[address % 0x800];
+        value = memory[address & 0x7FFF];
     }
     else
     {
@@ -266,13 +266,13 @@ void CPU::ie_indx()
 
     else if constexpr(C == 3)
     {
-        effective_addr |= read((zero_page_addr + X) % 256);
+        effective_addr |= read((zero_page_addr + X) & 0xFF);
         n_cycles++;       
     }
 
     else if constexpr(C == 4)
     {
-        effective_addr |= (uint16_t)(read((zero_page_addr + X + 1) % 256) << 8);
+        effective_addr |= (uint16_t)(read((zero_page_addr + X + 1) & 0xFF) << 8);
         n_cycles++;       
     }
 
@@ -351,7 +351,7 @@ void CPU::ie_zpxy(uint8_t reg)
     
     else
     {
-        effective_addr = (zero_page_addr + reg) % 256;
+        effective_addr = (zero_page_addr + reg) & 0xFF;
         data = read(effective_addr);
         n_cycles++;
     }
@@ -379,7 +379,7 @@ void CPU::ie_indy()
 
     else if constexpr(C == 3)    
     {
-        absolute_addr |= (read((zero_page_addr + 1) % 256) << 8);
+        absolute_addr |= (read((zero_page_addr + 1) & 0xFF) << 8);
         n_cycles++;
     }
 
@@ -847,7 +847,7 @@ void CPU::STA()
             case 3:
             {
                 n_cycles++;
-                write((zero_page_addr + X) % 256, Accumulator);
+                write((zero_page_addr + X) & 0xFF, Accumulator);
                 break; 
             }          
         }       
@@ -990,7 +990,7 @@ void CPU::STX()
             case 1: { ie_zpxy<1>(Y); break; }
             case 2: { ie_zpxy<2>(Y); break; }
             case 3:
-                write((zero_page_addr + Y) % 256, X);
+                write((zero_page_addr + Y) & 0xFF, X);
                 n_cycles++;
                 break;
             
@@ -1020,7 +1020,7 @@ void CPU::STY()
             case 1: { ie_zpxy<1>(X); break; }
             case 2: { ie_zpxy<2>(X); break; }
             case 3:
-                write((zero_page_addr + X) % 256, Y);
+                write((zero_page_addr + X) & 0xFF, Y);
                 n_cycles++;
                 break;           
         }  

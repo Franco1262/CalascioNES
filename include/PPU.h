@@ -123,7 +123,7 @@ class PPU
 
 
         std::vector<uint32_t> screen;
-        std::vector<uint8_t> screen2;
+        std::vector<uint8_t> scanline_buffer;
         std::vector<uint32_t> pattern_buffer;
         std::vector<uint32_t> nametable_buffer;
         std::vector<uint32_t> sprite_buffer;
