@@ -687,7 +687,7 @@ void PPU::tick()
         if( is_rendering_enabled && (scanline != 261) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation();
 
-        if( is_rendering_enabled && cycles == 256 && scanline != 261 && scanline != 0)
+        if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != 261 && scanline != 0)
             draw_sprite_pixel();
         if( is_rendering_enabled && cycles == 256)
             increment_vert_v();
