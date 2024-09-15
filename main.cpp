@@ -129,8 +129,8 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     memcpy(pixels, screen.data(), screen.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &screen_rect);
-/* 
-    //Nametable texture
+
+/*     //Nametable texture
     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
     buffer = SDL_CreateTexture(app.renderer,
                            SDL_PIXELFORMAT_RGBA8888,
