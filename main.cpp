@@ -104,10 +104,10 @@ void initSDL()
 }
 void draw_frame(std::shared_ptr<PPU> ppu)
 {
-/*     std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
-    std::vector<uint32_t> nametable1 = ppu->get_nametable(1); */
+    std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
+    std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
     std::vector<uint32_t> screen = ppu->get_screen();
-/*     std::vector<uint32_t> sprites = ppu->get_sprite();  */
+    std::vector<uint32_t> sprites = ppu->get_sprite(); 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     void* pixels = nullptr;
     int pitch = 256 *4;
@@ -130,7 +130,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &screen_rect);
 
-/*     //Nametable texture
+    //Nametable texture
     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
     buffer = SDL_CreateTexture(app.renderer,
                            SDL_PIXELFORMAT_RGBA8888,
@@ -175,7 +175,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
 
     memcpy(pixels, sprites.data(), sprites.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
-    SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect); */
+    SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect);
 
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);

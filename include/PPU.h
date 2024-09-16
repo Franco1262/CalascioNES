@@ -135,6 +135,7 @@ class PPU
         bool in_range;
         int j;
         int i;
+        bool n_tile_8x16;
 
         bool is_rendering_enabled;
 };

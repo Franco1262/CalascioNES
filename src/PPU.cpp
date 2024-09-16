@@ -22,6 +22,7 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
     j = 0;
     i = 0;
     palette = 0x00;
+    n_tile_8x16 = false;
 }
 
 PPU::~PPU() {}
@@ -427,7 +428,8 @@ void PPU::sprite_evaluation()
             secondary_oam[secondary_oam_pos] = oam_data;
             //If is in the range copy the remaining 3 bytes into secondary oam
             uint8_t sprite_row = scanline - y_coord;
-            if ((sprite_row < 8) && (sprite_row >= 0))
+            int sprite_size = ((PPUCTRL & 0x20) > 0) ? 16 : 8;
+            if ((sprite_row < sprite_size) && (sprite_row >= 0))
             {
                 secondary_oam[secondary_oam_pos + 1] = OAM[(4*n) + 1];
                 secondary_oam[secondary_oam_pos + 2] = OAM[(4*n) + 2];
@@ -461,7 +463,8 @@ void PPU::sprite_evaluation()
             if(m == 0)
             {
                 uint8_t sprite_row = scanline - OAM[(4*n) + m];
-                if( sprite_row < 8 && (sprite_row) >= 0)
+                int sprite_size = ((PPUCTRL & 0x20) > 0) ? 16 : 8;
+                if( sprite_row < sprite_size && (sprite_row) >= 0)
                 {
                     PPUSTATUS |= 0x20;
                     in_range = true;
@@ -512,6 +515,9 @@ inline void PPU::load_shifters()
 void PPU::draw_sprite_pixel()
 {
     uint8_t pixel;
+    uint8_t sprite_lsb;
+    uint8_t sprite_msb;
+    bool sprite_size_8x16 = PPUCTRL & 0x20;
 
     for(int i = 0; i < 8; i++)
     {
@@ -522,8 +528,21 @@ void PPU::draw_sprite_pixel()
 
         if((tile_id != 0xFF || attribute_sprite != 0xFF || x_coord != 0xFF) && y_coord < 0xEF)
         {
-            uint8_t sprite_lsb = scanline_sprite_buffer[(i * 6) + 4];
-            uint8_t sprite_msb = scanline_sprite_buffer[(i * 6) + 5]; 
+            if (sprite_size_8x16) {
+                // Determine which pattern table to use
+                uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
+                uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
+                uint8_t fine_y = scanline - y_coord - 1;
+                if(fine_y >=8)
+                    tile_address+=16;
+                sprite_lsb = bus->ppu_reads((tile_id & 1) * 0x1000 + ((tile_id & 0xFE) >> 1) * 32 + (fine_y & 0x7));
+                sprite_msb = bus->ppu_reads((tile_id & 1) * 0x1000 + ((tile_id & 0xFE) >> 1) * 32 + (fine_y & 0x7) + 8);
+            }
+            else
+            {
+                sprite_lsb = scanline_sprite_buffer[(i * 6) + 4];
+                sprite_msb = scanline_sprite_buffer[(i * 6) + 5]; 
+            }
             palette_sprite = attribute_sprite & 0x3;
             bool flip_horizontally = attribute_sprite & 0x40;
 
@@ -587,17 +606,40 @@ void PPU::draw_background_pixel()
     screen[index] = system_palette[get_palette_color(palette_index, pixel)];
 
     uint8_t sprite_row = scanline - scanline_sprite_buffer[0];
+    int sprite_height = ((PPUCTRL & 0x20) > 0) ? 16 : 8; 
 
-    if((scanline_sprite_buffer[0] == OAM[0]) && (scanline_sprite_buffer[1] == OAM[1]) && scanline_sprite_buffer[2] == OAM[02] && scanline_sprite_buffer[3] == OAM[3])
-        if (((sprite_row < 8) && (sprite_row >= 0)) && ((cycles - 1 ) - scanline_sprite_buffer[3] >= 0) &&  ((cycles - 1) - scanline_sprite_buffer[3] < 8))
+    if((scanline_sprite_buffer[0] == OAM[0]) && (scanline_sprite_buffer[1] == OAM[1]) && scanline_sprite_buffer[2] == OAM[2] && scanline_sprite_buffer[3] == OAM[3])
+        if (((sprite_row < sprite_height) && (sprite_row >= 0)) && ((cycles - 1 ) - scanline_sprite_buffer[3] >= 0) &&  ((cycles - 1) - scanline_sprite_buffer[3] < 8))
+        {
             check_sprite_0_hit();
+        }
+
 }
 
 void PPU::check_sprite_0_hit()
 {
     uint8_t x_coord = scanline_sprite_buffer[3];
-    uint8_t sprite_lsb = scanline_sprite_buffer[4];
-    uint8_t sprite_msb = scanline_sprite_buffer[5]; 
+    uint8_t y_coord_sprite_0 = scanline_sprite_buffer[0];
+    uint8_t tile_id = scanline_sprite_buffer[1];
+    uint8_t sprite_lsb;
+    uint8_t sprite_msb;
+
+    if (PPUCTRL & 0x20) {
+        // Determine which pattern table to use
+        uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
+        uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
+        uint8_t fine_y = scanline - y_coord;
+        if(fine_y >=8)
+            tile_address+=16;
+        sprite_lsb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7));
+        sprite_msb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7) + 8);
+    }
+    else
+    {
+        sprite_lsb = scanline_sprite_buffer[4];
+        sprite_msb = scanline_sprite_buffer[5]; 
+    } 
+    
 
     uint8_t offset = cycles - x_coord;
     uint8_t pixel = (((sprite_lsb << offset) & 0x80) >> 7) | (((sprite_msb << offset) & 0x80) >> 6);
@@ -611,6 +653,7 @@ void PPU::check_sprite_0_hit()
             if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
             {
                 PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
+                std::cout << scanline << " " << cycles << std::endl;
             }
         }
     }       
@@ -685,7 +728,7 @@ void PPU::tick()
             v = (v & ~(0x7BE0)) | (t & 0x7BE0);
 
         if( is_rendering_enabled && (scanline != 261) && ((cycles > 64) && ( cycles < 257)))
-            sprite_evaluation();
+            sprite_evaluation(); 
 
         if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != 261 && scanline != 0)
             draw_sprite_pixel();
@@ -714,12 +757,14 @@ void PPU::tick()
                 case 5: 
                     break;
                 case 6:
-                    scanline_sprite_buffer[(i * 6) + 4] = bus->ppu_reads(((PPUCTRL & 0x8) > 0) * 0x1000 + (secondary_oam[(i*4) + 1] * 16) + (scanline - secondary_oam[i * 4]));
+                    if(!(PPUCTRL & 0x20))
+                        scanline_sprite_buffer[(i * 6) + 4] = bus->ppu_reads(((PPUCTRL & 0x8) > 0) * 0x1000 + (secondary_oam[(i*4) + 1] * 16) + (scanline - secondary_oam[i * 4]));
                     break;
                 case 7: 
                     break;
                 case 0:
-                    scanline_sprite_buffer[(i * 6) + 5] = bus->ppu_reads(((PPUCTRL & 0x8) > 0) * 0x1000 + (secondary_oam[(i*4) + 1] * 16) + (scanline - secondary_oam[i * 4]) + 8);
+                    if(!(PPUCTRL & 0x20))
+                        scanline_sprite_buffer[(i * 6) + 5] = bus->ppu_reads(((PPUCTRL & 0x8) > 0) * 0x1000 + (secondary_oam[(i*4) + 1] * 16) + (scanline - secondary_oam[i * 4]) + 8);       
                     i++;
                     break;
            }            
