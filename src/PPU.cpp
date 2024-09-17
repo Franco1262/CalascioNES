@@ -532,11 +532,13 @@ void PPU::draw_sprite_pixel()
                 // Determine which pattern table to use
                 uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
                 uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
-                uint8_t fine_y = scanline - y_coord - 1;
-                if(fine_y >=8)
+                uint16_t fine_y = scanline - y_coord - 1;
+                if(fine_y >= 8)
+                {
                     tile_address+=16;
-                sprite_lsb = bus->ppu_reads((tile_id & 1) * 0x1000 + ((tile_id & 0xFE) >> 1) * 32 + (fine_y & 0x7));
-                sprite_msb = bus->ppu_reads((tile_id & 1) * 0x1000 + ((tile_id & 0xFE) >> 1) * 32 + (fine_y & 0x7) + 8);
+                }
+                sprite_lsb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7));
+                sprite_msb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7) + 8);
             }
             else
             {
@@ -580,8 +582,7 @@ void PPU::draw_sprite_pixel()
                         screen[screen_index] = system_palette[color];
                         scanline_buffer[x] |= 0x4;
                     }
-                }
-                
+                }                
             }
         }
     }
@@ -624,13 +625,17 @@ void PPU::check_sprite_0_hit()
     uint8_t sprite_lsb;
     uint8_t sprite_msb;
 
-    if (PPUCTRL & 0x20) {
+    if (PPUCTRL & 0x20) 
+    {
         // Determine which pattern table to use
         uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
         uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
-        uint8_t fine_y = scanline - y_coord;
-        if(fine_y >=8)
+        uint16_t fine_y = scanline - y_coord_sprite_0;
+        std::cout << (int)fine_y << std::endl;
+        if(fine_y >= 8)
+        {
             tile_address+=16;
+        }
         sprite_lsb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7));
         sprite_msb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7) + 8);
     }
