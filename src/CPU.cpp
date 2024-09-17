@@ -5,11 +5,9 @@
 //CLD, CLV, CLI, SEC, SED, SEI, DEX, DEY, INX, INY, NOP, TAX, TAY, TSX, TXA, TXS, TYA, BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS
 //PHA, PLA, PLP, PHP, JSR, RTS, RTI
 
-//Falta BRK, JMP
 
 CPU::CPU()
 {
-    //Falla 0x4E
     Instr = 
     {
         { 0x00, &CPU::BRK, 7 }, { 0x01, &CPU::ORA, 6 }, { 0x02, &CPU::XXX, 2 }, { 0x03, &CPU::XXX, 8 },
@@ -99,7 +97,6 @@ void CPU::write(uint16_t address, uint8_t value)
     }  
     else
         bus->cpu_writes(address, value);
-    
 }
 
 uint8_t CPU::read(uint16_t address)
@@ -182,7 +179,9 @@ void CPU::fetch()
 {
     
     if(bus->get_nmi())
+    {
         opcode =  0x00; //BRK instruction. Handles NMI
+    }
     else
     {
         opcode = read(PC);
@@ -3200,12 +3199,12 @@ void CPU::BRK()
                 else
                 {
                     PC |= (read(0xFFFF) << 8);
+
                 }
                 n_cycles++;
                 break;
         }
     }
-
 }
 void CPU::RTI()
 {

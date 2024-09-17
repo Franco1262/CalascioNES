@@ -429,7 +429,7 @@ void PPU::sprite_evaluation()
             //If is in the range copy the remaining 3 bytes into secondary oam
             uint8_t sprite_row = scanline - y_coord;
             int sprite_size = ((PPUCTRL & 0x20) > 0) ? 16 : 8;
-            if ((sprite_row < sprite_size) && (sprite_row >= 0))
+            if ((scanline >= y_coord) && (scanline < (y_coord + sprite_size)))
             {
                 secondary_oam[secondary_oam_pos + 1] = OAM[(4*n) + 1];
                 secondary_oam[secondary_oam_pos + 2] = OAM[(4*n) + 2];
@@ -464,7 +464,7 @@ void PPU::sprite_evaluation()
             {
                 uint8_t sprite_row = scanline - OAM[(4*n) + m];
                 int sprite_size = ((PPUCTRL & 0x20) > 0) ? 16 : 8;
-                if( sprite_row < sprite_size && (sprite_row) >= 0)
+                if( (scanline >= y_coord) && (scanline < (y_coord + sprite_size)))
                 {
                     PPUSTATUS |= 0x20;
                     in_range = true;
@@ -526,6 +526,8 @@ void PPU::draw_sprite_pixel()
         uint8_t attribute_sprite = scanline_sprite_buffer[(i * 6) + 2];
         uint8_t x_coord = scanline_sprite_buffer[(i * 6) + 3];
 
+        bool flip_vertically = attribute_sprite & 0x80;
+
         if((tile_id != 0xFF || attribute_sprite != 0xFF || x_coord != 0xFF) && y_coord < 0xEF)
         {
             if (sprite_size_8x16) {
@@ -533,10 +535,15 @@ void PPU::draw_sprite_pixel()
                 uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
                 uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
                 uint16_t fine_y = scanline - y_coord - 1;
+                if(flip_vertically)
+                    fine_y = 15 - fine_y;
+
                 if(fine_y >= 8)
                 {
                     tile_address+=16;
                 }
+                if(flip_vertically)
+                    fine_y = 7 - (fine_y & 0x7);
                 sprite_lsb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7));
                 sprite_msb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7) + 8);
             }
@@ -606,62 +613,87 @@ void PPU::draw_background_pixel()
     scanline_buffer[cycles - 1] = pixel; 
     screen[index] = system_palette[get_palette_color(palette_index, pixel)];
 
-    uint8_t sprite_row = scanline - scanline_sprite_buffer[0];
+    uint8_t sprite_row = scanline - scanline_sprite_buffer[0] - 1;
     int sprite_height = ((PPUCTRL & 0x20) > 0) ? 16 : 8; 
 
     if((scanline_sprite_buffer[0] == OAM[0]) && (scanline_sprite_buffer[1] == OAM[1]) && scanline_sprite_buffer[2] == OAM[2] && scanline_sprite_buffer[3] == OAM[3])
-        if (((sprite_row < sprite_height) && (sprite_row >= 0)) && ((cycles - 1 ) - scanline_sprite_buffer[3] >= 0) &&  ((cycles - 1) - scanline_sprite_buffer[3] < 8))
+        if (((sprite_row < sprite_height) && (sprite_row >= 0)) && ((cycles - 1 ) - scanline_sprite_buffer[3] >= 0) && ((cycles - 1) - scanline_sprite_buffer[3] < 8))
         {
             check_sprite_0_hit();
         }
-
 }
 
 void PPU::check_sprite_0_hit()
 {
     uint8_t x_coord = scanline_sprite_buffer[3];
     uint8_t y_coord_sprite_0 = scanline_sprite_buffer[0];
+    uint8_t attribute_sprite = scanline_sprite_buffer[2];
     uint8_t tile_id = scanline_sprite_buffer[1];
     uint8_t sprite_lsb;
     uint8_t sprite_msb;
+    uint8_t  pixel;
 
-    if (PPUCTRL & 0x20) 
+    bool flip_vertically = attribute_sprite & 0x80;
+
+    if(y_coord_sprite_0 < 0xEF)
     {
-        // Determine which pattern table to use
-        uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
-        uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
-        uint16_t fine_y = scanline - y_coord_sprite_0;
-        std::cout << (int)fine_y << std::endl;
-        if(fine_y >= 8)
+        if (PPUCTRL & 0x20) 
         {
-            tile_address+=16;
-        }
-        sprite_lsb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7));
-        sprite_msb = bus->ppu_reads(pattern_table_addr + tile_address + (fine_y & 0x7) + 8);
-    }
-    else
-    {
-        sprite_lsb = scanline_sprite_buffer[4];
-        sprite_msb = scanline_sprite_buffer[5]; 
-    } 
-    
+            // Determine which pattern table to use
+            uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
+            uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
+            uint16_t fine_y = scanline - y_coord_sprite_0 - 1;
 
-    uint8_t offset = cycles - x_coord;
-    uint8_t pixel = (((sprite_lsb << offset) & 0x80) >> 7) | (((sprite_msb << offset) & 0x80) >> 6);
-
-    uint8_t x = x_coord + offset - 1;
-
-    if (IS_PPUMASK_SET(PPUMASK) && (x < 255) && !(PPUSTATUS & 0x40))
-    {
-        if (pixel != 0x00 && scanline_buffer[x] != 0x00)
-        {
-            if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
+            if(flip_vertically)
             {
-                PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
-                std::cout << scanline << " " << cycles << std::endl;
+                fine_y = 15 - fine_y;
             }
+
+            if(fine_y >= 8)
+            {
+                tile_address+=16;
+            }
+            if(flip_vertically)
+                fine_y = 7 - (fine_y & 0x7);
+            uint16_t address = pattern_table_addr + tile_address + (fine_y & 0x7);
+            sprite_lsb = bus->ppu_reads(address);
+            sprite_msb = bus->ppu_reads(address + 8);
         }
-    }       
+        else
+        {
+            sprite_lsb = scanline_sprite_buffer[4];
+            sprite_msb = scanline_sprite_buffer[5]; 
+        } 
+
+        bool flip_horizontally = attribute_sprite & 0x40;
+        uint8_t offset = cycles - x_coord;
+
+        if(flip_horizontally)
+        {
+            pixel = ((sprite_lsb >> offset) & 0x1) | (((sprite_msb >> offset) & 0x1) << 1);
+            sprite_lsb >>= 1;
+            sprite_msb >>= 1;
+        }
+        else
+        {
+            pixel = (((sprite_lsb << offset) & 0x80) >> 7) | (((sprite_msb << offset) & 0x80) >> 6);
+            sprite_lsb <<= 1;
+            sprite_msb <<= 1;
+        }
+
+        uint8_t x = x_coord + offset - 1;
+        if (IS_PPUMASK_SET(PPUMASK) && (x < 255) && !(PPUSTATUS & 0x40))
+        {
+            if (pixel != 0x00 && scanline_buffer[x] != 0x00)
+            {
+                if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
+                {
+                    PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
+                    screen[scanline *256 + x] = 0xFF000000;
+                }
+            }
+        }  
+    }     
 }
 
 void PPU::tick()
@@ -734,6 +766,7 @@ void PPU::tick()
 
         if( is_rendering_enabled && (scanline != 261) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation(); 
+        
 
         if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != 261 && scanline != 0)
             draw_sprite_pixel();

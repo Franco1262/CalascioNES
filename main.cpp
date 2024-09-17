@@ -57,14 +57,34 @@ int main(int argc, char *argv[])
             ppu->tick();
             ppu->tick();
 
-            if(bus->get_input())
+             if(bus->get_input())
             {
                 bus->set_input(doInput());
-            }
+                doInput();
+            } 
         }
         current_frame = ppu->get_frame();        
         draw_frame(ppu);
     }
+/*    bool ok = true;
+   cpu.open_file("TESTS/2c.json");
+    for(int i = 0; i < 9999; i++)
+    {
+        cpu.load(i);
+        while(!cpu.finished())
+        {
+            cpu.tick();
+        }
+        ok &= cpu.compare(i);
+    }
+    if(ok)
+        std::cout << "A";
+    else 
+        std::cout << "B"; 
+
+
+    int i;
+    std::cin >> i; */
 
     return 0;
 }
