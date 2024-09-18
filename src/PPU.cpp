@@ -585,8 +585,11 @@ void PPU::draw_sprite_pixel()
                     }
                     else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
                     {
+                        if(screen[screen_index] != 0x00FF0000)
+                        {
                         screen[screen_index] = system_palette[color];
                         scanline_buffer[x] |= 0x4;
+                        }
                     }
                 }                
             }
@@ -680,7 +683,7 @@ void PPU::check_sprite_0_hit()
             sprite_msb <<= 1;
         }
 
-        uint8_t x = x_coord + offset;
+        uint8_t x = x_coord + offset ;
         if (IS_PPUMASK_SET(PPUMASK) && (x < 255) && !(PPUSTATUS & 0x40))
         {
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
@@ -688,7 +691,7 @@ void PPU::check_sprite_0_hit()
                 if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
                 {
                     PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
-                    screen[scanline * 256 + x] = 0xFF000000;
+                    screen[scanline * 256 + x] = 0x00FF0000;
                 }
             }
         }  

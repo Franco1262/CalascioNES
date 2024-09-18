@@ -104,7 +104,7 @@ uint8_t CPU::read(uint16_t address)
     uint8_t value;
     if(address  < 0x2000)
     {
-        value = memory[address & 0x7FFF];
+        value = memory[address & 0x7FF];
     }
     else
     {
@@ -185,6 +185,7 @@ void CPU::fetch()
     else
     {
         opcode = read(PC);
+        //std::cout << std::hex << (int)opcode << std::endl;
         PC++;
     }
     n_cycles++;
@@ -245,7 +246,6 @@ void CPU::ie_abs()
     else
     {
         data = read(effective_addr);
-        //std::cout << "Address: " << std::hex << (int)effective_addr << "Data: " << (int)data<<std::endl;
         n_cycles++;
     }   
 }
