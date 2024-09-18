@@ -6,3 +6,5 @@ TODO.txt
 json/
 main.exe
 *.nes
+*.dll
+SDL2-2.30.7/

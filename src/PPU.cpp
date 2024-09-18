@@ -462,7 +462,6 @@ void PPU::sprite_evaluation()
 
             if(m == 0)
             {
-                uint8_t sprite_row = scanline - OAM[(4*n) + m];
                 int sprite_size = ((PPUCTRL & 0x20) > 0) ? 16 : 8;
                 if( (scanline >= y_coord) && (scanline < (y_coord + sprite_size)))
                 {
@@ -533,7 +532,7 @@ void PPU::draw_sprite_pixel()
             if (sprite_size_8x16) {
                 // Determine which pattern table to use
                 uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
-                uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
+                uint16_t tile_address = (tile_id & 0xFE) * 16;
                 uint16_t fine_y = scanline - y_coord - 1;
                 if(flip_vertically)
                     fine_y = 15 - fine_y;
@@ -641,7 +640,7 @@ void PPU::check_sprite_0_hit()
         {
             // Determine which pattern table to use
             uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
-            uint16_t tile_address = ((tile_id & 0xFE) >> 1) * 32;
+            uint16_t tile_address = (tile_id & 0xFE) * 16;
             uint16_t fine_y = scanline - y_coord_sprite_0 - 1;
 
             if(flip_vertically)
@@ -666,7 +665,7 @@ void PPU::check_sprite_0_hit()
         } 
 
         bool flip_horizontally = attribute_sprite & 0x40;
-        uint8_t offset = cycles - x_coord;
+        uint8_t offset = cycles - x_coord - 1;
 
         if(flip_horizontally)
         {
@@ -681,7 +680,7 @@ void PPU::check_sprite_0_hit()
             sprite_msb <<= 1;
         }
 
-        uint8_t x = x_coord + offset - 1;
+        uint8_t x = x_coord + offset;
         if (IS_PPUMASK_SET(PPUMASK) && (x < 255) && !(PPUSTATUS & 0x40))
         {
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
@@ -689,7 +688,7 @@ void PPU::check_sprite_0_hit()
                 if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
                 {
                     PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
-                    screen[scanline *256 + x] = 0xFF000000;
+                    screen[scanline * 256 + x] = 0xFF000000;
                 }
             }
         }  

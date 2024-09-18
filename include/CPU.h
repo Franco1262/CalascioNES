@@ -3,11 +3,11 @@
 #include <vector>
 #include <fstream>
 #include <memory>
-#include "nlohmann/json.hpp"
+/* #include "nlohmann/json.hpp" */
 
 
 
-using json = nlohmann::json;
+/* using json = nlohmann::json; */
 
 class Bus;
 class CPU
@@ -29,7 +29,7 @@ class CPU
     private:
 
         uint8_t opcode;
-        json json_data;
+/*         json json_data; */
         std::shared_ptr<Bus> bus;
 
         //Registers

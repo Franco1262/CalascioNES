@@ -14,7 +14,6 @@ Bus::~Bus() {}
 uint8_t Bus::cpu_reads(uint16_t address)
 {
     uint8_t data;
-    
     if( (address >= 0x2000) && (address < 0x4000) )
     {
         data = ppu->cpu_reads(address % 8);
@@ -74,7 +73,6 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
 uint8_t Bus::ppu_reads(uint16_t address)
 {
     uint8_t data;
-
     if(address >= 0x0000 && address < 0x2000)
         data = cart->ppu_reads(address);
 

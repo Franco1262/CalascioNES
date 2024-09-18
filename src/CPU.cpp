@@ -3293,7 +3293,7 @@ void CPU::XXX()
     n_cycles++;
 }
 
-bool CPU::open_file(std::string name)
+/* bool CPU::open_file(std::string name)
 {
     std::ifstream f(name);
     bool ok = true;
@@ -3355,7 +3355,7 @@ bool CPU::compare(int line)
     }
 
     return ok;
-}
+} */
 
 void CPU::reset()
 {
