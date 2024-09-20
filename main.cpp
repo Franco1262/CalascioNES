@@ -60,31 +60,11 @@ int main(int argc, char *argv[])
              if(bus->get_input())
             {
                 bus->set_input(doInput());
-                doInput();
             } 
         }
         current_frame = ppu->get_frame();        
         draw_frame(ppu);
     }
-/*    bool ok = true;
-   cpu.open_file("TESTS/2c.json");
-    for(int i = 0; i < 9999; i++)
-    {
-        cpu.load(i);
-        while(!cpu.finished())
-        {
-            cpu.tick();
-        }
-        ok &= cpu.compare(i);
-    }
-    if(ok)
-        std::cout << "A";
-    else 
-        std::cout << "B"; 
-
-
-    int i;
-    std::cin >> i; */
 
     return 0;
 }
@@ -126,8 +106,8 @@ void draw_frame(std::shared_ptr<PPU> ppu)
 {
     std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
     std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
-    std::vector<uint32_t> screen = ppu->get_screen();
     std::vector<uint32_t> sprites = ppu->get_sprite(); 
+    std::vector<uint32_t> screen = ppu->get_screen();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     void* pixels = nullptr;
     int pitch = 256 *4;
@@ -195,7 +175,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
 
     memcpy(pixels, sprites.data(), sprites.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
-    SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect);
+    SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect );
 
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);

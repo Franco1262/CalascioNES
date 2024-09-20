@@ -26,7 +26,9 @@ uint8_t Bus::cpu_reads(uint16_t address)
             if (strobe) {
                 // Return the current state of the A button (bit 0)
                 data =  controller_state & 1;
-            } else {
+            } 
+            else 
+            {
                 // Shift out the button states
                 data = shift_register_controller & 1;
                 shift_register_controller >>= 1;
@@ -97,7 +99,7 @@ bool Bus::get_nmi()
 void Bus::set_input(uint8_t state)
 {
     controller_state = state; 
-    handle_input = false;  
+    handle_input = false;
 }
 
 bool Bus::get_input()

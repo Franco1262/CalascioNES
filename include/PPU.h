@@ -74,7 +74,6 @@ class PPU
 
 
         //Flags
-        bool even_odd;
         bool vblank;
         bool NMI_output;
 
@@ -88,11 +87,6 @@ class PPU
         int cycles;
         int scanline;
         bool frame;
-
-        uint8_t palette;
-        uint8_t palette_sprite;
-
-
 
         uint8_t nametable_id;
         uint8_t attribute;
@@ -123,19 +117,31 @@ class PPU
         bool frame_complete;
         int n; // variable for OAM fetching
         int m;
+
+
+        //Variables used in sprite evaluation
         uint8_t oam_data;
         uint8_t y_coord;
-        uint8_t byte;
         bool oam_writes;
         int secondary_oam_pos;
         int sprites_found;
         bool overflow_n;
-        bool sprite_overflow;
-        bool sprite_zero_hit;
         bool in_range;
+
+        //Used for clearing OAM
         int j;
         int i;
-        bool n_tile_8x16;
+        uint8_t byte;
+
 
         bool is_rendering_enabled;
+
+        //Variables for sprite 0 hit handling
+        bool sprite_0_next_scanline;
+        bool sprite_0_current_scanline;
+
+        uint8_t sprite_y_coord;
+        uint8_t attribute_sprite;
+        uint8_t tile_id;
+        uint16_t address;
 };
