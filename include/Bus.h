@@ -17,6 +17,7 @@ class Bus
         void cpu_writes(uint16_t address, uint8_t value);
 
         uint8_t ppu_reads(uint16_t address);
+        void ppu_writes(uint16_t address, uint8_t value);
 
         void set_nmi(bool value);
         bool get_nmi();

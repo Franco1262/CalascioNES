@@ -49,22 +49,26 @@ int main(int argc, char *argv[])
     bool current_frame = ppu->get_frame();
     draw_pattern_table(ppu);
 
+
+
     while (true) 
     {
+
         while (current_frame == ppu->get_frame()) {
             cpu.tick();
             ppu->tick();
             ppu->tick();
             ppu->tick();
 
-             if(bus->get_input())
-            {
+            if (bus->get_input()) {
                 bus->set_input(doInput());
             } 
         }
+
         current_frame = ppu->get_frame();        
         draw_frame(ppu);
     }
+
 
     return 0;
 }
@@ -220,7 +224,7 @@ void draw_pattern_table(std::shared_ptr<PPU> ppu)
 
     memcpy(pixels, pattern2.data(), pattern2.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
-    SDL_RenderCopy(app.renderer, buffer, NULL, &pattern_rect);
+    SDL_RenderCopy(app.renderer, buffer, NULL, &pattern_rect); 
    
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);   

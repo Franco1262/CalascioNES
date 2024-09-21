@@ -9,5 +9,6 @@ class NROM : public Mapper
         ~NROM() override { };
         uint16_t cpu_reads(uint16_t address);
         uint16_t ppu_reads(uint16_t address);
-        //void cpu_writes(uint16_t address, uint8_t value);
+        void cpu_writes(uint16_t address, uint8_t value) { };
+        int get_bank_number() { return 0;}
 };

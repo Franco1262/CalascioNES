@@ -68,7 +68,7 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
 
     else if( (address >= 0x4020) && (address <= 0xFFFF))
     {
-        //cart->cpu_writes(address, value);
+        cart->cpu_writes(address, value);
     }
 }
 
@@ -79,6 +79,11 @@ uint8_t Bus::ppu_reads(uint16_t address)
         data = cart->ppu_reads(address);
 
     return data;
+}
+
+void Bus::ppu_writes(uint16_t address, uint8_t value)
+{
+    cart->ppu_writes(address, value);
 }
 
 MIRROR Bus::getMirror()

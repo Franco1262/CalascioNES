@@ -166,7 +166,7 @@ uint8_t PPU::read(uint16_t address)
     if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
         if((address & 0x3) == 0x00)
-            data = frame_palette[0x00];       
+            data = frame_palette[0];       
         else 
             data = frame_palette[address & 0x1F];
     }
@@ -202,12 +202,17 @@ void PPU::write(uint16_t address, uint8_t value)
         } 
     }  
 
-    if( (address >= 0x3F00) && (address <= 0x3FFF) )
+    else if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
         if((address & 0x3) == 0x00)
             frame_palette[address & 0xF] = value;
         else 
             frame_palette[address & 0x1F] = value;
+    }
+
+    else if(address >= 0x0000 && address <= 0x2000)
+    {
+        bus->ppu_writes(address, value);
     }
 }
 
@@ -521,7 +526,7 @@ void PPU::draw_sprite_pixel()
 
         if((tile_id != 0xFF || attribute_sprite != 0xFF || sprite_0_x_coord != 0xFF) && sprite_y_coord < 0xEF)
         {
-
+            
             sprite_lsb = scanline_sprite_buffer[(i * 6) + 4];
             sprite_msb = scanline_sprite_buffer[(i * 6) + 5]; 
 
@@ -551,7 +556,10 @@ void PPU::draw_sprite_pixel()
                 if((scanline_buffer[x] & 0x4) == 0)
                 {
                     if(scanline_buffer[x] == 0x00 && pixel == 0x00)
+                    {
                         screen[screen_index] = system_palette[get_palette_color(0, 0)];
+                        scanline_buffer[x] |= 0x4;
+                    }
                     else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
                     {
                         screen[screen_index] = system_palette[color];
@@ -560,6 +568,11 @@ void PPU::draw_sprite_pixel()
                     else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
                     {
                         screen[screen_index] = system_palette[color];
+                        scanline_buffer[x] |= 0x4;
+                    }
+                    else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && (attribute_sprite & 0x20) )
+                    {
+                        //screen[screen_index] = system_palette[color];
                         scanline_buffer[x] |= 0x4;
                     }
                 }                
@@ -583,8 +596,18 @@ void PPU::draw_background_pixel()
 
     // Update screen2 and screen arrays
     uint32_t index = scanline * 256 + (cycles - 1);
-    scanline_buffer[cycles - 1] = pixel; 
-    screen[index] = system_palette[get_palette_color(palette_index, pixel)];
+
+    if( !(!(PPUMASK & 0x2) && ((cycles-1) < 8)) )
+    {
+        screen[index] = system_palette[get_palette_color(palette_index, pixel)];
+        scanline_buffer[cycles - 1] = pixel;
+    }
+    else
+    {
+        screen[index] = system_palette[get_palette_color(0, 0)];
+        scanline_buffer[cycles - 1] = pixel;
+    }
+    
 
     if(sprite_0_current_scanline)
     {
@@ -745,7 +768,7 @@ void PPU::tick()
                     if(!(PPUCTRL & 0x20))
                     {
                         address = ((PPUCTRL & 0x8) > 0) * 0x1000 + (tile_id * 16) + (scanline - sprite_y_coord);
-                        scanline_sprite_buffer[(i * 6) + 4] = bus->ppu_reads(address);
+                        scanline_sprite_buffer[(i * 6) + 4] = read(address);
                     }
                     else
                     {
@@ -767,7 +790,7 @@ void PPU::tick()
                         if(attribute_sprite & 0x80)
                             fine_y = 7 - (fine_y & 0x7);
                         address = pattern_table_addr + tile_address + (fine_y & 0x7);
-                        scanline_sprite_buffer[(i * 6) + 4] = bus->ppu_reads(address);
+                        scanline_sprite_buffer[(i * 6) + 4] = read(address);
                     }
 
                     break;
@@ -777,7 +800,7 @@ void PPU::tick()
                     if(!(PPUCTRL & 0x20))
                     {
                         address = ((PPUCTRL & 0x8) > 0) * 0x1000 + (tile_id * 16) + (scanline - sprite_y_coord);
-                        scanline_sprite_buffer[(i * 6) + 5] = bus->ppu_reads(address + 8);     
+                        scanline_sprite_buffer[(i * 6) + 5] = read(address + 8);     
                     }
                     else
                     {
@@ -799,7 +822,7 @@ void PPU::tick()
                         if(attribute_sprite & 0x80)
                             fine_y = 7 - (fine_y & 0x7);
                         address = pattern_table_addr + tile_address + (fine_y & 0x7);
-                        scanline_sprite_buffer[(i * 6) + 5] = bus->ppu_reads(address + 8);
+                        scanline_sprite_buffer[(i * 6) + 5] = read(address + 8);
                     }
                     i++;
                     break;
