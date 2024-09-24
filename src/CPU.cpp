@@ -3155,56 +3155,53 @@ void CPU::RTS()
 
 void CPU::BRK()
 {
-
-    if(bus->get_nmi() || (P & 0x4) == 0)
+    switch (n_cycles)
     {
-        switch (n_cycles)
-        {
-            case 1: { 
-                n_cycles++; 
-                break; }
-            case 2:
-                if(!bus->get_nmi())
-                    PC++;
+        case 1: { 
+            n_cycles++; 
+            break; }
+        case 2:
+            if(!bus->get_nmi())
+                PC++;
 
-                write(0x100 + SP, (PC & 0xFF00) >> 8);
-                SP--;
-                n_cycles++;
-                break;
-            case 3:
-                write(0x100 + SP, PC & 0x00FF);
-                SP--;
-                n_cycles++;
-                break;
-            case 4:
-                write(0x100 + SP, P | 0x10);
-                P |= 0x04;
-                SP--;
-                n_cycles++;
-                break;
-            case 5:
-                PC = 0x0000;
-                if(bus->get_nmi())
-                    PC |= read(0xFFFA);
-                else
-                    PC |= read(0xFFFE);
-                n_cycles++;
-                break;
-            case 6:
-                if(bus->get_nmi())
-                {
-                    PC |= (read(0xFFFB) << 8);
-                    bus->set_nmi(false);
-                }
-                else
-                {
-                    PC |= (read(0xFFFF) << 8);
+            write(0x100 + SP, (PC & 0xFF00) >> 8);
+            SP--;
+            n_cycles++;
+            break;
+        case 3:
+            write(0x100 + SP, PC & 0x00FF);
+            SP--;
+            n_cycles++;
+            break;
+        case 4:
+            write(0x100 + SP, P | 0x10);
+            P |= 0x04;
+            SP--;
+            n_cycles++;
+            break;
+        case 5:
+            PC = 0x0000;
+            if(bus->get_nmi())
+                PC |= read(0xFFFA);
+            else
+                PC |= read(0xFFFE);
+            n_cycles++;
+            break;
+        case 6:
+            if(bus->get_nmi())
+            {
+                PC |= (read(0xFFFB) << 8);
+                bus->set_nmi(false);
+            }
+            else
+            {
+                PC |= (read(0xFFFF) << 8);
 
-                }
-                n_cycles++;
-                break;
-        }
+            }
+            n_cycles++;
+            break;
     }
+   
 }
 void CPU::RTI()
 {

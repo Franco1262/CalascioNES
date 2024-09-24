@@ -34,7 +34,6 @@ uint8_t PPU::cpu_reads(uint16_t address)
             data = PPUSTATUS;
             w = 0;
             PPUSTATUS &= 0x7F;
-            vblank = false;
             break; 
         }
         case 3: {data = OAMADDR; break; }
@@ -74,7 +73,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             PPUMASK = value;
             break; 
         }
-        case 2: {PPUSTATUS = value; break; }
+        case 2: {PPUSTATUS =  (PPUSTATUS & ~(0x7F)) | value; break; }
         case 3: {OAMADDR = value; break; }
         case 4: 
         {
@@ -88,13 +87,13 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             PPUSCROLL = value;
             if(!w)
             {
-                t = (t & ~(0xF8 >> 3)) | ((PPUSCROLL & 0xF8) >> 3);
+                t = (t & ~(0x001F)) | ((PPUSCROLL & 0xF8) >> 3);
                 fine_x = PPUSCROLL & 0x07;
                 w = 1;
             }
             else
             {
-                t = (t & ~(0x73E0)) | ((PPUSCROLL & 0x7) << 12) | (((PPUSCROLL & 0xF8) >> 3) << 5);
+                t = (t & ~(0x73E0)) | ((PPUSCROLL & 0x7) << 12) | (((PPUSCROLL & 0xF8) << 2));
                 w = 0;            
             }
             break; 
@@ -131,7 +130,7 @@ uint8_t PPU::read(uint16_t address)
 {
     uint8_t data;
 
-
+    address = address & 0x3FFF;
     if((address >= 0x0000) && (address < 0x2000))
     {
         data = bus->ppu_reads(address);
@@ -160,7 +159,15 @@ uint8_t PPU::read(uint16_t address)
                 data = nametable[0x400 + (address & 0x3FF)];
             else if (address >= 0x2C00 && address <= 0x2FFF)
                 data = nametable[0x400 + (address & 0x3FF)];       
-        } 
+        }
+
+        if(bus->getMirror() == MIRROR::ONE_SCREEN_LOWER)
+            data = nametable[address & 0x3FF];        
+
+        if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
+            data = nametable[0x400 + (address & 0x3FF)];  
+        
+        
     } 
 
     if( (address >= 0x3F00) && (address <= 0x3FFF) )
@@ -176,6 +183,7 @@ uint8_t PPU::read(uint16_t address)
 
 void PPU::write(uint16_t address, uint8_t value)
 {
+    address = address & 0x3FFF;
     if((address >= 0x2000) && (address < 0x3EFF))
     {
         if(address >= 0x3000)
@@ -199,7 +207,13 @@ void PPU::write(uint16_t address, uint8_t value)
                 nametable[0x400 + (address & 0x3FF)] = value;
             else if (address >= 0x2C00 && address <= 0x2FFF)
                 nametable[0x400 + (address & 0x3FF)] = value;
-        } 
+        }
+
+        if(bus->getMirror() == MIRROR::ONE_SCREEN_LOWER)
+            nametable[address & 0x3FF] = value;        
+
+        if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
+            nametable[0x400 + (address & 0x3FF)] = value; 
     }  
 
     else if( (address >= 0x3F00) && (address <= 0x3FFF) )
@@ -210,7 +224,7 @@ void PPU::write(uint16_t address, uint8_t value)
             frame_palette[address & 0x1F] = value;
     }
 
-    else if(address >= 0x0000 && address <= 0x2000)
+    if(address >= 0x0000 && address < 0x2000)
     {
         bus->ppu_writes(address, value);
     }
@@ -370,6 +384,7 @@ void inline PPU::increment_vert_v()
             y += 1;                         // increment coarse Y
         v = (v & ~0x03E0) | (y << 5);     // put coarse Y back into v    
     }
+
 }
 
 void inline PPU::increment_v_ppudata()
@@ -651,7 +666,7 @@ void PPU::check_sprite_0_hit()
         }
 
         uint8_t x = x_coord + offset ;
-        if (IS_PPUMASK_SET(PPUMASK) && (x < 255) && !(PPUSTATUS & 0x40))
+        if (( PPUMASK & 0x8) && (PPUMASK & 0x10) &&(x < 255) && !(PPUSTATUS & 0x40))
         {
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
             {
@@ -667,7 +682,6 @@ void PPU::check_sprite_0_hit()
 void PPU::tick()
 {
     is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
-
     if((scanline < 240) || (scanline == 261))
     {
         if( ((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337)) ) 
@@ -695,7 +709,6 @@ void PPU::tick()
                     {
                         //clear vblank
                         PPUSTATUS &= 0x1F;
-                        vblank = false;
                     }                
                     break; 
                 }
@@ -743,7 +756,7 @@ void PPU::tick()
         if( is_rendering_enabled && (cycles == 257))
             v = (v & ~(0x41F)) | (t & 0x41F);  
 
-        if((cycles > 256) && (cycles < 321))
+        if(is_rendering_enabled && (cycles > 256) && (cycles < 321))
         {         
             switch(cycles & 0x7)
             {
@@ -765,66 +778,48 @@ void PPU::tick()
                 case 5: 
                     break;
                 case 6:
-                    if(!(PPUCTRL & 0x20))
-                    {
-                        address = ((PPUCTRL & 0x8) > 0) * 0x1000 + (tile_id * 16) + (scanline - sprite_y_coord);
-                        scanline_sprite_buffer[(i * 6) + 4] = read(address);
-                    }
-                    else
-                    {
-                        // Determine which pattern table to use
-                        uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
-                        uint16_t tile_address = (tile_id & 0xFE) * 16;
-                        auto fine_y = scanline - sprite_y_coord;
-
-                        if(attribute_sprite & 0x80)
-                            tile_address+=16;
-                        if(fine_y >= 8)
-                        {
-                            if(attribute_sprite & 0x80)
-                                tile_address-=16;
-                            else
-                                tile_address+=16;
-                        }
-                        
-                        if(attribute_sprite & 0x80)
-                            fine_y = 7 - (fine_y & 0x7);
-                        address = pattern_table_addr + tile_address + (fine_y & 0x7);
-                        scanline_sprite_buffer[(i * 6) + 4] = read(address);
-                    }
-
-                    break;
-                case 7: 
-                    break;
                 case 0:
-                    if(!(PPUCTRL & 0x20))
+                {
+                    uint8_t fine_y = (scanline - sprite_y_coord);
+                    uint16_t address = 0x0000;
+
+                    if((attribute_sprite & 0x80) && (PPUCTRL & 0x20))
+                        address += 16;
+
+                    if(fine_y >= 8 && PPUCTRL & 0x20)
                     {
-                        address = ((PPUCTRL & 0x8) > 0) * 0x1000 + (tile_id * 16) + (scanline - sprite_y_coord);
-                        scanline_sprite_buffer[(i * 6) + 5] = read(address + 8);     
+                        if(attribute_sprite & 0x80)
+                            address -= 16;
+                        else
+                            address += 16;
+                    }
+                    
+                    
+                    if(attribute_sprite & 0x80)
+                        fine_y = 7 - (fine_y & 0x7);
+
+                    //8x16 sprites
+                    if(PPUCTRL & 0x20)
+                        address += ((tile_id & 0x1) * 0x1000) + ((tile_id & 0xFE) * 16) + (fine_y & 0x7);
+                
+                    //8x8 sprites 
+                    else
+                        address = (((PPUCTRL & 0x8) > 0) * 0x1000) + (tile_id * 16) + (fine_y & 0x7);
+                                    
+
+                    if((cycles & 0x7) == 0)
+                    {
+                        address += 8;
+                        scanline_sprite_buffer[(i * 6) + 5] = read(address);
+                        i++;
                     }
                     else
-                    {
-                        // Determine which pattern table to use
-                        uint16_t pattern_table_addr = (tile_id & 1) * 0x1000;
-                        uint16_t tile_address = (tile_id & 0xFE) * 16;
-                        auto fine_y = scanline - sprite_y_coord;
+                        scanline_sprite_buffer[(i * 6) + 4] = read(address);  
 
-                        if(attribute_sprite & 0x80)
-                            tile_address+=16;
-                        if(fine_y >= 8)
-                        {
-                            if(attribute_sprite & 0x80)
-                                tile_address-=16;
-                            else
-                                tile_address+=16;
-                        }
-                        
-                        if(attribute_sprite & 0x80)
-                            fine_y = 7 - (fine_y & 0x7);
-                        address = pattern_table_addr + tile_address + (fine_y & 0x7);
-                        scanline_sprite_buffer[(i * 6) + 5] = read(address + 8);
+                    break;      
                     }
-                    i++;
+                
+                case 7: 
                     break;
            }            
         }
@@ -847,12 +842,12 @@ void PPU::tick()
     if( (scanline == 241) && (cycles == 1) )
     {
         PPUSTATUS |= 0x80;
-        vblank = true;
         if(NMI_output)
         {
             bus->set_nmi(true);
-            frame = !frame;
         } 
+
+        frame = !frame;
     }
 
     cycles++;

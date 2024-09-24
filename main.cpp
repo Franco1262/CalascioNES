@@ -42,19 +42,18 @@ int main(int argc, char *argv[])
     cpu.reset();
     ppu->reset();
 
-    using namespace std::chrono;    
-
 
     initSDL(); 
     bool current_frame = ppu->get_frame();
-    draw_pattern_table(ppu);
+    //draw_pattern_table(ppu);
 
 
 
     while (true) 
     {
 
-        while (current_frame == ppu->get_frame()) {
+        while (current_frame == ppu->get_frame()) 
+        {
             cpu.tick();
             ppu->tick();
             ppu->tick();
@@ -108,9 +107,9 @@ void initSDL()
 }
 void draw_frame(std::shared_ptr<PPU> ppu)
 {
-    std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
+/*     std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
     std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
-    std::vector<uint32_t> sprites = ppu->get_sprite(); 
+    std::vector<uint32_t> sprites = ppu->get_sprite();  */
     std::vector<uint32_t> screen = ppu->get_screen();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     void* pixels = nullptr;
@@ -134,7 +133,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &screen_rect);
 
-    //Nametable texture
+  /*   //Nametable texture
     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
     buffer = SDL_CreateTexture(app.renderer,
                            SDL_PIXELFORMAT_RGBA8888,
@@ -180,7 +179,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     memcpy(pixels, sprites.data(), sprites.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect );
-
+    */
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);
 }

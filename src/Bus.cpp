@@ -76,7 +76,9 @@ uint8_t Bus::ppu_reads(uint16_t address)
 {
     uint8_t data;
     if(address >= 0x0000 && address < 0x2000)
+    {
         data = cart->ppu_reads(address);
+    }
 
     return data;
 }

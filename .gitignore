@@ -8,3 +8,4 @@ main.exe
 *.nes
 *.dll
 SDL2-2.30.7/
+nes-test-roms

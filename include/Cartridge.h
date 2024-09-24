@@ -5,6 +5,8 @@
 #include <memory>
 #include "NROM.h"
 #include "UxROM.h"
+#include "CNROM.h"
+#include "SxROM.h"
 
 class PPU;
 class Cartridge
@@ -22,6 +24,7 @@ class Cartridge
         std::vector<uint8_t> CHR_ROM; 
         std::vector<uint8_t> PRG_ROM;
         std::vector<uint8_t> CHR_RAM;
+        std::vector<uint8_t> PRG_RAM;
         std::unique_ptr<Mapper> mapper;
 
         struct Header
@@ -33,7 +36,7 @@ class Cartridge
             uint8_t flag7 = 0x00;
             uint8_t mapper = 0x00;
             uint8_t prg_chr_rom_size = 0x00;
-            uint8_t prg_ram_size = 0x00;
+            uint8_t prg_ram_shift = 0x00;
             uint8_t chr_ram_shift = 0x00;
             uint8_t misc[4]; //Unused for now
         } header;
