@@ -131,12 +131,11 @@ uint8_t PPU::read(uint16_t address)
     uint8_t data;
 
     address = address & 0x3FFF;
+    
     if((address >= 0x0000) && (address < 0x2000))
-    {
         data = bus->ppu_reads(address);
-    }
 
-    else if((address >= 0x2000) && (address < 0x3000))
+    else if((address >= 0x2000) && (address < 0x3F00))
     {
         if(address >= 0x3000)
             address -= 0x1000;
@@ -165,12 +164,12 @@ uint8_t PPU::read(uint16_t address)
             data = nametable[address & 0x3FF];        
 
         if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
-            data = nametable[0x400 + (address & 0x3FF)];  
+            data = nametable[0x400 + (address & 0x3FF)];
         
         
     } 
 
-    if( (address >= 0x3F00) && (address <= 0x3FFF) )
+    else if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
         if((address & 0x3) == 0x00)
             data = frame_palette[0];       
@@ -184,7 +183,11 @@ uint8_t PPU::read(uint16_t address)
 void PPU::write(uint16_t address, uint8_t value)
 {
     address = address & 0x3FFF;
-    if((address >= 0x2000) && (address < 0x3EFF))
+
+    if(address >= 0x0000 && address < 0x2000)
+        bus->ppu_writes(address, value);
+
+    else if((address >= 0x2000) && (address < 0x3F00))
     {
         if(address >= 0x3000)
             address -= 0x1000;
@@ -222,11 +225,6 @@ void PPU::write(uint16_t address, uint8_t value)
             frame_palette[address & 0xF] = value;
         else 
             frame_palette[address & 0x1F] = value;
-    }
-
-    if(address >= 0x0000 && address < 0x2000)
-    {
-        bus->ppu_writes(address, value);
     }
 }
 

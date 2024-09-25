@@ -85,6 +85,7 @@ void CPU::write(uint16_t address, uint8_t value)
 {
     if(address < 0x2000)
         memory[address & 0x7FF] = value;
+        
     else if(address == 0x4014)
     {
         OAMDMA = value;
@@ -103,13 +104,10 @@ uint8_t CPU::read(uint16_t address)
 {
     uint8_t value;
     if(address  < 0x2000)
-    {
         value = memory[address & 0x7FF];
-    }
     else
-    {
         value = bus->cpu_reads(address);
-    }
+
     return value; 
 }
 
