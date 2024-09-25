@@ -573,13 +573,14 @@ void PPU::draw_sprite_pixel()
                     if(scanline_buffer[x] == 0x00 && pixel == 0x00)
                     {
                         screen[screen_index] = system_palette[get_palette_color(0, 0)];
-                        scanline_buffer[x] |= 0x4;
+                        //scanline_buffer[x] |= 0x4;
                     }
                     else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
                     {
                         screen[screen_index] = system_palette[color];
                         scanline_buffer[x] |= 0x4;
                     }
+                    else if(pixel == 0x00 && (scanline_buffer[x] != 0x00));
                     else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
                     {
                         screen[screen_index] = system_palette[color];
