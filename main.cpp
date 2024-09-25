@@ -250,8 +250,8 @@ uint16_t doInput()
     uint16_t state = 0x0000;
     const uint8_t *keystate = SDL_GetKeyboardState(NULL);
     
-    if (keystate[SDL_SCANCODE_KP_7])  state |= 1 << 0;  // A button
-    if (keystate[SDL_SCANCODE_KP_8])  state |= 1 << 1;  // B button
+    if (keystate[SDL_SCANCODE_KP_8])  state |= 1 << 0;  // A button
+    if (keystate[SDL_SCANCODE_KP_7])  state |= 1 << 1;  // B button
     if (keystate[SDL_SCANCODE_KP_4])  state |= 1 << 2;  // Select
     if (keystate[SDL_SCANCODE_KP_5])  state |= 1 << 3;  // Start
     if (keystate[SDL_SCANCODE_W])    state |= 1 << 4;  // Up
@@ -259,10 +259,10 @@ uint16_t doInput()
     if (keystate[SDL_SCANCODE_A])  state |= 1 << 6;  // Left
     if (keystate[SDL_SCANCODE_D]) state |= 1 << 7;  // Right
 
-    if (keystate[SDL_SCANCODE_1])  state |= 1 << 8;  // A button
-    if (keystate[SDL_SCANCODE_2])  state |= 1 << 9;  // B button
-    if (keystate[SDL_SCANCODE_3])  state |= 1 << 10;  // Select
-    if (keystate[SDL_SCANCODE_4])  state |= 1 << 11;  // Start
+    if (keystate[SDL_SCANCODE_S])  state |= 1 << 8;  // A button
+    if (keystate[SDL_SCANCODE_A])  state |= 1 << 9;  // B button
+    if (keystate[SDL_SCANCODE_W])  state |= 1 << 10;  // Select
+    if (keystate[SDL_SCANCODE_E])  state |= 1 << 11;  // Start
     if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up
     if (keystate[SDL_SCANCODE_DOWN])  state |= 1 << 13;  // Down
     if (keystate[SDL_SCANCODE_LEFT])  state |= 1 << 14;  // Left
