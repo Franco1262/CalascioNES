@@ -7,6 +7,7 @@
 #include "UxROM.h"
 #include "CNROM.h"
 #include "SxROM.h"
+#include "AxROM.h"
 
 class PPU;
 class Cartridge

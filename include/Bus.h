@@ -32,7 +32,8 @@ class Bus
 
         bool NMI = false;
         uint16_t controller_state;
-        uint16_t shift_register_controller;
+        uint16_t shift_register_controller1;
+        uint16_t shift_register_controller2;
         bool handle_input;
         bool strobe;
 

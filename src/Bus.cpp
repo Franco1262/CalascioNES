@@ -24,15 +24,15 @@ uint8_t Bus::cpu_reads(uint16_t address)
             if (strobe) 
             {
                 // Return the current state of the A button (bit 0)
-                shift_register_controller = controller_state & 0xFF;
+                shift_register_controller1 = controller_state & 0xFF;
                 data =  controller_state & 1;
             } 
             else 
             {
                 // Shift out the button states
-                data = shift_register_controller & 1;
-                shift_register_controller >>= 1;
-                if(shift_register_controller == 0x00)
+                data = shift_register_controller1 & 1;
+                shift_register_controller1 >>= 1;
+                if(shift_register_controller1 == 0x00)
                     handle_input = false;
             }
         }
@@ -42,15 +42,15 @@ uint8_t Bus::cpu_reads(uint16_t address)
             if (strobe) 
             {
                 // Return the current state of the A button (bit 0)
-                shift_register_controller = (controller_state >> 8) & 0xFF;
-                data =  controller_state & 1;
+                shift_register_controller2 = (controller_state >> 8) & 0xFF;
+                data =  (controller_state >> 8) & 1;
             } 
             else 
             {
                 // Shift out the button states
-                data = shift_register_controller & 1;
-                shift_register_controller >>= 1;
-                if(shift_register_controller == 0x00)
+                data = shift_register_controller2 & 1;
+                shift_register_controller2 >>= 1;
+                if(shift_register_controller2 == 0x00)
                     handle_input = false;
             }           
         }
@@ -75,7 +75,8 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
             if(strobe)
             {
                 handle_input = true;
-                shift_register_controller = controller_state; 
+                shift_register_controller1 = controller_state & 0xFF;
+                shift_register_controller2 = (controller_state >> 8) & 0xFF;;
             }    
         }
     }

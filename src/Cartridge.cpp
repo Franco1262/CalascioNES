@@ -73,7 +73,8 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
             case 0: { mapper = std::make_unique<NROM> (n_prg_rom_banks, n_chr_rom_banks); break; }
             case 2: { mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
             case 3: { mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-            case 1: { mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }         
+            case 1: { mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
+            case 7: { mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }     
             default: {throw std::runtime_error("Unsupported mapper"); break;}
         }
     }
@@ -125,7 +126,7 @@ void Cartridge::cpu_writes(uint16_t address, uint8_t value)
 
 MIRROR Cartridge::getMirror()
 {
-    if (mapper_id == 1) 
+    if (mapper_id == 1 || mapper_id == 7) 
         mirror_mode = mapper->get_mirroring_mode();
     else
         mirror_mode = mirror_mode;

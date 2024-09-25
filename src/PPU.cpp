@@ -46,9 +46,20 @@ uint8_t PPU::cpu_reads(uint16_t address)
         case 6: {data = PPUADDR; break; }
         case 7: 
         {
+            if(v >= 0x3F00 && v <= 0x3FFF)
+            {
+                if((v & 0x3) == 0x00)
+                    data = frame_palette[v & 0xF];       
+                else 
+                    data = frame_palette[v & 0x1F];
 
-            data = ppudata_read_buffer;
-            ppudata_read_buffer = read(v);
+                ppudata_read_buffer = read(v - 0x1000);
+            }
+            else
+            {
+                data = ppudata_read_buffer;
+                ppudata_read_buffer = read(v);
+            }
             increment_v_ppudata();
             break; 
         }
@@ -221,7 +232,8 @@ void PPU::write(uint16_t address, uint8_t value)
 
     else if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
-        if((address & 0x3) == 0x00)
+        address = address & 0x1F;
+        if((address & 0x3) == 0x00 )
             frame_palette[address & 0xF] = value;
         else 
             frame_palette[address & 0x1F] = value;
@@ -744,15 +756,16 @@ void PPU::tick()
         if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == 261))
             v = (v & ~(0x7BE0)) | (t & 0x7BE0);
 
+        if( is_rendering_enabled && cycles == 256)
+            increment_vert_v();
+
         if( is_rendering_enabled && (scanline != 261) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation(); 
         
         if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != 261 && scanline != 0)
             draw_sprite_pixel();
-        if( is_rendering_enabled && cycles == 256)
-            increment_vert_v();
 
-        if( is_rendering_enabled && (cycles == 257))
+         if( is_rendering_enabled && (cycles == 257))
             v = (v & ~(0x41F)) | (t & 0x41F);  
 
         if(is_rendering_enabled && (cycles > 256) && (cycles < 321))
