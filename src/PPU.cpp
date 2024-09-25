@@ -77,11 +77,10 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         case 3: {OAMADDR = value; break; }
         case 4: 
         {
-            OAMDATA = value;
-            OAM[OAMADDR] = OAMDATA;
-            OAMADDR++;
+            OAM[OAMADDR] = value;  // Directly write value to OAM
+            OAMADDR = (OAMADDR + 1) & 0xFF;  // Increment OAMADDR with wrapping
             break; 
-            }
+        }
         case 5: 
         {
             PPUSCROLL = value;
@@ -139,6 +138,7 @@ uint8_t PPU::read(uint16_t address)
     {
         if(address >= 0x3000)
             address -= 0x1000;
+            
         if(bus->getMirror() == MIRROR::HORIZONTAL)
         {
             if((address >= 0x2000) && (address < 0x2800))

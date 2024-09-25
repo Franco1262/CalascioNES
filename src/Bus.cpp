@@ -15,7 +15,7 @@ uint8_t Bus::cpu_reads(uint16_t address)
 {
     uint8_t data = 0x00;
     if( (address >= 0x2000) && (address < 0x4000) )
-        data = ppu->cpu_reads(address % 8);
+        data = ppu->cpu_reads(address & 0x7);
 
     else if( (address >= 0x4000) && (address < 0x4018) )
     {
@@ -65,7 +65,7 @@ uint8_t Bus::cpu_reads(uint16_t address)
 void Bus::cpu_writes(uint16_t address, uint8_t value)
 {
     if( (address >= 0x2000) && (address < 0x4000) )
-        ppu->cpu_writes((address % 8), value);
+        ppu->cpu_writes((address & 0x7), value);
 
     else if( (address >= 0x4000) && (address < 0x4018) )
     {
