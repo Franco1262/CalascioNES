@@ -19,7 +19,7 @@ uint32_t AxROM::ppu_reads(uint16_t address)
 void AxROM::cpu_writes(uint16_t address, uint8_t value)
 {
     bank_switching = value;
-    mirroring_mode = (value & 0x10) ? MIRROR::ONE_SCREEN_UPPER : MIRROR::ONE_SCREEN_LOWER;
+    mirroring_mode = ((value & 0x10) > 0) ? MIRROR::ONE_SCREEN_UPPER : MIRROR::ONE_SCREEN_LOWER;
 }
 
 MIRROR AxROM::get_mirroring_mode()

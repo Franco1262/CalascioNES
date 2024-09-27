@@ -38,6 +38,7 @@ class PPU
         void draw_background_pixel();
         void draw_sprite_pixel();
         void check_sprite_0_hit();
+        void set_ppu_timing(uint8_t);
 
         void sprite_evaluation();
     private:
@@ -144,4 +145,7 @@ class PPU
         uint8_t attribute_sprite;
         uint8_t tile_id;
         uint16_t address;
+        uint16_t total_scanlines;
+
+        bool ppu_timing;
 };

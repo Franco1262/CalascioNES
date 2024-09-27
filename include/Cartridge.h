@@ -28,6 +28,7 @@ class Cartridge
         std::vector<uint8_t> PRG_RAM;
         std::unique_ptr<Mapper> mapper;
 
+
         struct Header
         {
             uint8_t id_string[4];
@@ -39,7 +40,8 @@ class Cartridge
             uint8_t prg_chr_rom_size = 0x00;
             uint8_t prg_ram_shift = 0x00;
             uint8_t chr_ram_shift = 0x00;
-            uint8_t misc[4]; //Unused for now
+            uint8_t ppu_type;
+            uint8_t misc[3]; //Unused for now
         } header;
 
         uint16_t n_prg_rom_banks = 1;

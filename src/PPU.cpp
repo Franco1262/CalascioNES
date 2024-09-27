@@ -14,11 +14,23 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
     pattern_buffer = std::vector<uint32_t>( 128*128 );
     nametable_buffer = std::vector<uint32_t>( 256 * 240 );
     sprite_buffer = std::vector<uint32_t>(64 * 64);
+    ppu_timing = 0;
+    total_scanlines = 262;
     j = 0;
     i = 0;
 }
 
 PPU::~PPU() {}
+
+void PPU::set_ppu_timing(uint8_t value)
+{
+    ppu_timing = value;
+
+    if(ppu_timing == 0)
+        total_scanlines = 262;
+    else
+        total_scanlines = 312;
+}
 
 
 uint8_t PPU::cpu_reads(uint16_t address)
@@ -399,7 +411,7 @@ void inline PPU::increment_vert_v()
 
 void inline PPU::increment_v_ppudata()
 {
-    if(((scanline < 240) || (scanline == 261)) && IS_PPUMASK_SET(PPUMASK))
+    if(((scanline < 240) || (scanline == (total_scanlines - 1))) && IS_PPUMASK_SET(PPUMASK))
     {
         increment_hori_v();
         increment_vert_v();
@@ -577,30 +589,32 @@ void PPU::draw_sprite_pixel()
                 uint32_t x = sprite_0_x_coord + j;
                 uint32_t screen_index = scanline * 256 + x;
 
-
-                if((scanline_buffer[x] & 0x4) == 0)
+                if( !(!(PPUMASK & 0x4) && (x < 8)))
                 {
-                    if(scanline_buffer[x] == 0x00 && pixel == 0x00)
+                    if((scanline_buffer[x] & 0x4) == 0)
                     {
-                        screen[screen_index] = system_palette[get_palette_color(0, 0)];
-                        //scanline_buffer[x] |= 0x4;
-                    }
-                    else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
-                    {
-                        screen[screen_index] = system_palette[color];
-                        scanline_buffer[x] |= 0x4;
-                    }
-                    else if(pixel == 0x00 && (scanline_buffer[x] != 0x00));
-                    else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
-                    {
-                        screen[screen_index] = system_palette[color];
-                        scanline_buffer[x] |= 0x4;
-                    }
-                    else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && (attribute_sprite & 0x20) )
-                    {
-                        //screen[screen_index] = system_palette[color];
-                        scanline_buffer[x] |= 0x4;
-                    }
+                        if(scanline_buffer[x] == 0x00 && pixel == 0x00)
+                        {
+                            screen[screen_index] = system_palette[get_palette_color(0, 0)];
+                            //scanline_buffer[x] |= 0x4;
+                        }
+                        else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
+                        {
+                            screen[screen_index] = system_palette[color];
+                            scanline_buffer[x] |= 0x4;
+                        }
+                        else if(pixel == 0x00 && (scanline_buffer[x] != 0x00));
+                        else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
+                        {
+                            screen[screen_index] = system_palette[color];
+                            scanline_buffer[x] |= 0x4;
+                        }
+                        else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && (attribute_sprite & 0x20) )
+                        {
+                            //screen[screen_index] = system_palette[color];
+                            scanline_buffer[x] |= 0x4;
+                        }
+                    }                   
                 }                
             }
         }
@@ -687,18 +701,19 @@ void PPU::check_sprite_0_hit()
                 }               
             }
         }  
-    }     
+    }
+       
 }
 
 void PPU::tick()
 {
     is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
-    if((scanline < 240) || (scanline == 261))
+    if((scanline < 240) || (scanline == (total_scanlines - 1)))
     {
         if( ((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337)) ) 
         {
 
-            if( is_rendering_enabled && (scanline != 261) && (cycles < 257))
+            if( is_rendering_enabled && (scanline != (total_scanlines - 1)) && (cycles < 257))
                 draw_background_pixel();
             shift_bits(); 
 
@@ -716,7 +731,7 @@ void PPU::tick()
 
                 case 1:
                 { 
-                    if( (scanline == 261) && (cycles == 1) )
+                    if( ((scanline == (total_scanlines - 1)) && (cycles == 1)) )
                     {
                         //clear vblank
                         PPUSTATUS &= 0x1F;
@@ -753,16 +768,16 @@ void PPU::tick()
             }
         }
 
-        if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == 261))
+        if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == (total_scanlines - 1)))
             v = (v & ~(0x7BE0)) | (t & 0x7BE0);
 
         if( is_rendering_enabled && cycles == 256)
             increment_vert_v();
 
-        if( is_rendering_enabled && (scanline != 261) && ((cycles > 64) && ( cycles < 257)))
+        if( is_rendering_enabled && (scanline != (total_scanlines - 1)) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation(); 
         
-        if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != 261 && scanline != 0)
+        if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != (total_scanlines - 1) && scanline != 0)
             draw_sprite_pixel();
 
          if( is_rendering_enabled && (cycles == 257))
@@ -872,10 +887,10 @@ void PPU::tick()
         sprite_0_current_scanline = sprite_0_next_scanline;
 
 
-        if(scanline == 262)
+        if(scanline == total_scanlines)
         {
             scanline = 0;
-            if( is_rendering_enabled && odd)
+            if( is_rendering_enabled && odd && (ppu_timing == 0))
             {
                 cycles = 1;
             }

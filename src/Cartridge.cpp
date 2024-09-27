@@ -20,7 +20,8 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
 
         bool NES20Format=false;
         if (iNESFormat==true && (header.flag7 & 0x0C) ==0x08)
-                NES20Format=true; 
+                NES20Format=true;
+
 
         //Reading the mirror mode of the cartridge
         mirror_mode = static_cast<MIRROR>(header.flag6 & 0x01);
@@ -30,6 +31,7 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
 
         if(header.flag6 & 0x4)
             std::cout << "Trainer";
+
         
         //Reserving memory for the PRG-ROM 
         PRG_ROM.reserve(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
@@ -54,6 +56,7 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
 
         PRG_RAM.reserve(0x8000);
         PRG_RAM.resize(0x8000);
+
 
         //Reading PRG-ROM
         if(!file.read(reinterpret_cast<char*> (PRG_ROM.data()), n_prg_rom_banks * 0x4000))
@@ -109,6 +112,7 @@ uint8_t Cartridge::cpu_reads(uint16_t address)
     uint8_t data;
     if(address >= 0x6000 && address < 0x8000)
         data = PRG_RAM[mapper->cpu_reads(address)];
+
     else if(address >= 0x8000 && address <= 0xFFFF)
         data = PRG_ROM[mapper->cpu_reads(address)];
     return data;
@@ -128,8 +132,6 @@ MIRROR Cartridge::getMirror()
 {
     if (mapper_id == 1 || mapper_id == 7) 
         mirror_mode = mapper->get_mirroring_mode();
-    else
-        mirror_mode = mirror_mode;
 
 
     return mirror_mode;

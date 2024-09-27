@@ -45,28 +45,63 @@ int main(int argc, char *argv[])
 
     initSDL(); 
     bool current_frame = ppu->get_frame();
-    //draw_pattern_table(ppu);
+    draw_pattern_table(ppu);
 
 
+
+    float ppu_accumulator = 0.0;
+    float PPU_TIMING = 3;
 
     while (true) 
     {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) 
+        {
+            // Handle SDL events like quitting the window
+            if (event.type == SDL_QUIT) 
+                exit(0);
+            else if (event.type == SDL_KEYDOWN)
+            {
+                if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+                    exit(0);
+                else if(event.key.keysym.scancode == SDL_SCANCODE_P)
+                {
+                    if(PPU_TIMING == 3)
+                    {
+                        PPU_TIMING = 3.2;
+                        ppu->set_ppu_timing(1);
+                    }
+                    else
+                    {
+                        PPU_TIMING = 3;
+                        ppu->set_ppu_timing(0);                        
+                    }
+                }
+            }
+        }
 
         while (current_frame == ppu->get_frame()) 
         {
-            cpu.tick();
-            ppu->tick();
-            ppu->tick();
-            ppu->tick();
+            cpu.tick();  // 1 CPU cycle
 
-            if (bus->get_input()) {
+            // Add 3.2 PPU cycles to the accumulator
+            ppu_accumulator += PPU_TIMING;
+
+            // Process PPU cycles while the accumulator exceeds 1
+            while (ppu_accumulator >= 1.0)
+            {
+                ppu->tick(); // 1 PPU cycle
+                ppu_accumulator -= 1.0;
+            }
+
+            if (bus->get_input())
                 bus->set_input(doInput());
-            } 
         }
 
         current_frame = ppu->get_frame();        
         draw_frame(ppu);
     }
+
 
 
     return 0;
@@ -107,9 +142,9 @@ void initSDL()
 }
 void draw_frame(std::shared_ptr<PPU> ppu)
 {
-/*     std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
+    std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
     std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
-    std::vector<uint32_t> sprites = ppu->get_sprite();  */
+    std::vector<uint32_t> sprites = ppu->get_sprite(); 
     std::vector<uint32_t> screen = ppu->get_screen();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     void* pixels = nullptr;
@@ -133,7 +168,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &screen_rect);
 
-  /*   //Nametable texture
+    //Nametable texture
     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
     buffer = SDL_CreateTexture(app.renderer,
                            SDL_PIXELFORMAT_RGBA8888,
@@ -179,7 +214,7 @@ void draw_frame(std::shared_ptr<PPU> ppu)
     memcpy(pixels, sprites.data(), sprites.size() * sizeof(unsigned int));  
     SDL_UnlockTexture(buffer);
     SDL_RenderCopy(app.renderer, buffer, NULL, &nametable_rect );
-    */
+   
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);
 }
@@ -231,22 +266,6 @@ void draw_pattern_table(std::shared_ptr<PPU> ppu)
 
 uint16_t doInput()
 {
-    SDL_Event event;
-    while (SDL_PollEvent(&event))
-	{
-		switch (event.type)
-		{
-			case SDL_QUIT:
-				exit(0);
-				break;
-            case SDL_KEYDOWN:
-                if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
-                    exit(0);
-                break;
-			default:
-				break;
-		}
-	}
     uint16_t state = 0x0000;
     const uint8_t *keystate = SDL_GetKeyboardState(NULL);
     
