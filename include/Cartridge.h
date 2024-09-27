@@ -20,6 +20,7 @@ class Cartridge
         void ppu_writes(uint16_t address, uint8_t value);
         MIRROR getMirror();
         void cpu_writes(uint16_t address, uint8_t value);
+        void new_instruction();
        
     private:
         std::vector<uint8_t> CHR_ROM; 

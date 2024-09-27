@@ -6,6 +6,7 @@ SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks
     n_write = 0;
     shift_register = 0x10;
     prg_rom_mode = 3;
+    written_on_this_instruction = false;
 }
 
 uint32_t SxROM::cpu_reads(uint16_t address)
@@ -13,7 +14,18 @@ uint32_t SxROM::cpu_reads(uint16_t address)
     uint32_t mapped_addr;
 
     if(address >= 0x6000 && address < 0x8000)
-        mapped_addr =  ((chr_bank_0 & 0xC >> 2)* 0x2000) +  (address & 0x1FFF);
+    {
+        if(!chr_rom_mode)
+            mapped_addr =  address & 0x1FFF;
+        else
+        {
+            if(address >= 0x6000 && address < 0x7000)
+                mapped_addr = (((chr_bank_0 & 0xC) >> 2) * 0x1000) + (address & 0x0FFF);
+            
+            else
+                mapped_addr = (((chr_bank_1 & 0xC) >> 2) * 0x1000) + (address & 0x0FFF);
+        }
+    }
 
     else
     {
@@ -91,27 +103,32 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
     }
     else
     {
-        load_register = value;
-        shift_register = (shift_register >> 1) | ((load_register & 1) << 4);
-        n_write++;
-        
-        if (n_write == 5)
+
+        if(!written_on_this_instruction)
         {
-
-
-            if(address >= 0x8000 && address < 0xA000)
+            load_register = value;
+            shift_register = (shift_register >> 1) | ((load_register & 1) << 4);
+            n_write++;
+            
+            if (n_write == 5)
             {
-                control = shift_register & 0x1F;
-                update_state(); // Make sure update_state handles the control bits correctly
+
+                if(address >= 0x8000 && address < 0xA000)
+                {
+                    control = shift_register & 0x1F;
+                    update_state(); // Make sure update_state handles the control bits correctly
+                }
+                else if(address >= 0xA000 && address < 0xC000)
+                    chr_bank_0 = shift_register & 0x1F;
+                else if(address >= 0xC000 && address < 0xE000)
+                    chr_bank_1 = shift_register & 0x1F;
+                else if(address >= 0xE000 && address <= 0xFFFF)
+                    prg_bank = shift_register & 0x0F;      
+                n_write = 0; // Reset write count
+                shift_register = 0x10; // Reset the shift register
             }
-            else if(address >= 0xA000 && address < 0xC000)
-                chr_bank_0 = shift_register & 0x1F;
-            else if(address >= 0xC000 && address < 0xE000)
-                chr_bank_1 = shift_register & 0x1F;
-            else if(address >= 0xE000 && address <= 0xFFFF)
-                 prg_bank = shift_register & 0x0F;      
-            n_write = 0; // Reset write count
-            shift_register = 0x10; // Reset the shift register
+
+            written_on_this_instruction = true;           
         }
     }   
 }
@@ -143,4 +160,9 @@ void SxROM::update_state()
 MIRROR SxROM::get_mirroring_mode()
 {
     return mirroring_mode;
+}
+
+void SxROM::new_instruction()
+{
+    written_on_this_instruction = false;
 }

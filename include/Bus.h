@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include "Mapper.h"
+#include "SDL2/SDL.h"
 
 class PPU;
 class CPU;
@@ -21,6 +22,8 @@ class Bus
 
         void set_nmi(bool value);
         bool get_nmi();
+
+        void new_instruction();
 
         MIRROR getMirror();
 

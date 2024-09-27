@@ -113,6 +113,7 @@ uint8_t Cartridge::cpu_reads(uint16_t address)
     if(address >= 0x6000 && address < 0x8000)
         data = PRG_RAM[mapper->cpu_reads(address)];
 
+
     else if(address >= 0x8000 && address <= 0xFFFF)
         data = PRG_ROM[mapper->cpu_reads(address)];
     return data;
@@ -135,4 +136,9 @@ MIRROR Cartridge::getMirror()
 
 
     return mirror_mode;
+}
+
+void Cartridge::new_instruction()
+{
+    mapper->new_instruction();
 }

@@ -22,36 +22,26 @@ uint8_t Bus::cpu_reads(uint16_t address)
         if(address == 0x4016)
         {
             if (strobe) 
-            {
-                // Return the current state of the A button (bit 0)
-                shift_register_controller1 = controller_state & 0xFF;
                 data =  controller_state & 1;
-            } 
+                
             else 
             {
                 // Shift out the button states
                 data = shift_register_controller1 & 1;
                 shift_register_controller1 >>= 1;
-                if(shift_register_controller1 == 0x00)
-                    handle_input = false;
             }
         }
 
         else if(address == 0x4017)
         {
-            if (strobe) 
-            {
-                // Return the current state of the A button (bit 0)
-                shift_register_controller2 = (controller_state >> 8) & 0xFF;
+            if (strobe)        
                 data =  (controller_state >> 8) & 1;
-            } 
+            
             else 
             {
                 // Shift out the button states
                 data = shift_register_controller2 & 1;
                 shift_register_controller2 >>= 1;
-                if(shift_register_controller2 == 0x00)
-                    handle_input = false;
             }           
         }
     } 
@@ -75,8 +65,31 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
             if(strobe)
             {
                 handle_input = true;
-                shift_register_controller1 = controller_state & 0xFF;
-                shift_register_controller2 = (controller_state >> 8) & 0xFF;;
+
+                const uint8_t *keystate = SDL_GetKeyboardState(NULL);
+
+                uint16_t state = 0x0000;
+                
+                if (keystate[SDL_SCANCODE_KP_8])  state |= 1 << 0;  // A button
+                if (keystate[SDL_SCANCODE_KP_7])  state |= 1 << 1;  // B button
+                if (keystate[SDL_SCANCODE_KP_4])  state |= 1 << 2;  // Select
+                if (keystate[SDL_SCANCODE_KP_5])  state |= 1 << 3;  // Start
+                if (keystate[SDL_SCANCODE_W])    state |= 1 << 4;  // Up
+                if (keystate[SDL_SCANCODE_S])  state |= 1 << 5;  // Down
+                if (keystate[SDL_SCANCODE_A])  state |= 1 << 6;  // Left
+                if (keystate[SDL_SCANCODE_D]) state |= 1 << 7;  // Right
+
+                if (keystate[SDL_SCANCODE_S])  state |= 1 << 8;  // A button
+                if (keystate[SDL_SCANCODE_A])  state |= 1 << 9;  // B button
+                if (keystate[SDL_SCANCODE_W])  state |= 1 << 10;  // Select
+                if (keystate[SDL_SCANCODE_E])  state |= 1 << 11;  // Start
+                if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up
+                if (keystate[SDL_SCANCODE_DOWN])  state |= 1 << 13;  // Down
+                if (keystate[SDL_SCANCODE_LEFT])  state |= 1 << 14;  // Left
+                if (keystate[SDL_SCANCODE_RIGHT]) state |= 1 << 15;  // Right
+
+                shift_register_controller1 = state & 0xFF;
+                shift_register_controller2 = (state >> 8) & 0xFF;
             }    
         }
     }
@@ -125,4 +138,9 @@ void Bus::set_input(uint16_t state)
 bool Bus::get_input()
 {
     return handle_input;
+}
+
+void Bus::new_instruction()
+{
+    cart->new_instruction();  
 }

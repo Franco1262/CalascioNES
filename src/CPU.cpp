@@ -169,6 +169,7 @@ void CPU::tick()
         {
             n_cycles = 0;
             finish = true;
+            bus->new_instruction(); //Function useful for MMC1
         }
     }
 }

@@ -11,6 +11,7 @@ class UxROM : public Mapper
         uint32_t ppu_reads(uint16_t address);
         void cpu_writes(uint16_t address, uint8_t value);
         MIRROR get_mirroring_mode() {return MIRROR::HORIZONTAL;};
+        void new_instruction() {};
     private:
         uint8_t bank_switching;
 };

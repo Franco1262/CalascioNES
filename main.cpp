@@ -7,9 +7,6 @@
 #include "PPU.h"
 #include "Cartridge.h"
 #include "Bus.h" 
-#include "SDL2/SDL.h"
-#include <chrono>
-#include <thread>
 
 const int SCREEN_WIDTH = 256;
 const int SCREEN_HEIGHT = 240;
@@ -81,21 +78,16 @@ int main(int argc, char *argv[])
         }
 
         while (current_frame == ppu->get_frame()) 
-        {
+        {   
             cpu.tick();  // 1 CPU cycle
 
-            // Add 3.2 PPU cycles to the accumulator
             ppu_accumulator += PPU_TIMING;
 
-            // Process PPU cycles while the accumulator exceeds 1
             while (ppu_accumulator >= 1.0)
             {
                 ppu->tick(); // 1 PPU cycle
                 ppu_accumulator -= 1.0;
             }
-
-            if (bus->get_input())
-                bus->set_input(doInput());
         }
 
         current_frame = ppu->get_frame();        
@@ -262,30 +254,4 @@ void draw_pattern_table(std::shared_ptr<PPU> ppu)
    
     SDL_DestroyTexture(buffer);
     SDL_RenderPresent(app.renderer);   
-}
-
-uint16_t doInput()
-{
-    uint16_t state = 0x0000;
-    const uint8_t *keystate = SDL_GetKeyboardState(NULL);
-    
-    if (keystate[SDL_SCANCODE_KP_8])  state |= 1 << 0;  // A button
-    if (keystate[SDL_SCANCODE_KP_7])  state |= 1 << 1;  // B button
-    if (keystate[SDL_SCANCODE_KP_4])  state |= 1 << 2;  // Select
-    if (keystate[SDL_SCANCODE_KP_5])  state |= 1 << 3;  // Start
-    if (keystate[SDL_SCANCODE_W])    state |= 1 << 4;  // Up
-    if (keystate[SDL_SCANCODE_S])  state |= 1 << 5;  // Down
-    if (keystate[SDL_SCANCODE_A])  state |= 1 << 6;  // Left
-    if (keystate[SDL_SCANCODE_D]) state |= 1 << 7;  // Right
-
-    if (keystate[SDL_SCANCODE_S])  state |= 1 << 8;  // A button
-    if (keystate[SDL_SCANCODE_A])  state |= 1 << 9;  // B button
-    if (keystate[SDL_SCANCODE_W])  state |= 1 << 10;  // Select
-    if (keystate[SDL_SCANCODE_E])  state |= 1 << 11;  // Start
-    if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up
-    if (keystate[SDL_SCANCODE_DOWN])  state |= 1 << 13;  // Down
-    if (keystate[SDL_SCANCODE_LEFT])  state |= 1 << 14;  // Left
-    if (keystate[SDL_SCANCODE_RIGHT]) state |= 1 << 15;  // Right
-    
-    return state;	
 }

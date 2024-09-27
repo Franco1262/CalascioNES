@@ -12,6 +12,7 @@ class SxROM : public Mapper
         void cpu_writes(uint16_t address, uint8_t value);
         MIRROR get_mirroring_mode();
         void update_state();
+        void new_instruction();
     private:
         uint8_t load_register;
         uint8_t control;
@@ -26,4 +27,5 @@ class SxROM : public Mapper
         uint32_t address_bank_0;
         uint32_t address_bank_1;
         MIRROR mirroring_mode;
+        bool written_on_this_instruction;
 };
