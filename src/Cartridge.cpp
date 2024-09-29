@@ -37,11 +37,27 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
         PRG_ROM.reserve(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
         PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
         //Reserving memory for the CHR-ROM
-        if(n_chr_rom_banks != 0)
+
+        uint32_t chr_size;
+
+        if ( (n_chr_rom_banks & 0xF00) == 0xF00 )
         {
-            CHR_ROM.reserve(n_chr_rom_banks * CHR_ROM_BANK_SIZE);
-            CHR_ROM.resize(n_chr_rom_banks * CHR_ROM_BANK_SIZE);
+            // Exponent-multiplier notation
+            std::cout << " Multiplier notation " << std::endl;
+            uint8_t exponent = (header.prg_chr_rom_size & 0x0F);
+            uint8_t multiplier = (header.chr_rom_lsb & 0x03);
+            chr_size = (1 << exponent) * (multiplier * 2 + 1);
+        } 
+        else 
+            chr_size = n_chr_rom_banks * CHR_ROM_BANK_SIZE;
+        
+
+        if(n_chr_rom_banks != 0)
+        {   
+            CHR_ROM.reserve(chr_size);
+            CHR_ROM.resize(chr_size);
         }
+
         else
         {   
             int chr_ram_size;
@@ -57,29 +73,53 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
         PRG_RAM.reserve(0x8000);
         PRG_RAM.resize(0x8000);
 
-
         //Reading PRG-ROM
-        if(!file.read(reinterpret_cast<char*> (PRG_ROM.data()), n_prg_rom_banks * 0x4000))
-            throw std::runtime_error("There was a problem reading PRG-ROM");
+        try
+        {
+            if(!file.read(reinterpret_cast<char*> (PRG_ROM.data()), n_prg_rom_banks * 0x4000))
+                throw std::runtime_error("There was a problem reading PRG-ROM");
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+    
         //Reading CHR-ROM
+        try
+        {
         if(n_chr_rom_banks != 0)
-            if(!file.read(reinterpret_cast<char*> (CHR_ROM.data()), n_chr_rom_banks * 0x2000))
+            if(!file.read(reinterpret_cast<char*> (CHR_ROM.data()), chr_size))
                 throw std::runtime_error("There was a problem reading CHR-ROM");
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+        if (file.gcount() < chr_size) {
+            std::cout << "Only read " << file.gcount() << " bytes, expected " << chr_size << std::endl;
+}  
 
         //Calculating mapper_id
  
         mapper_id = (((header.flag6 & 0xF0) >> 4) | (header.flag7 & 0xF0) | ((header.mapper & 0x0F) << 8));
 
-        //Selecting the mapper
-        switch(mapper_id)
+        try
         {
-            case 0: { mapper = std::make_unique<NROM> (n_prg_rom_banks, n_chr_rom_banks); break; }
-            case 2: { mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-            case 3: { mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-            case 1: { mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-            case 7: { mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }     
-            default: {throw std::runtime_error("Unsupported mapper"); break;}
+            switch(mapper_id)
+            {
+                case 0: { mapper = std::make_unique<NROM> (n_prg_rom_banks, n_chr_rom_banks); break; }
+                case 2: { mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
+                case 3: { mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
+                case 1: { mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
+                case 7: { mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }     
+                default: {throw std::runtime_error("Unsupported mapper"); break;}
+            }
         }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+        
     }
     else
         throw std::runtime_error("There was an error opening the file");
