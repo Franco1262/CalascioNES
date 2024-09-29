@@ -148,4 +148,5 @@ class PPU
         uint16_t total_scanlines;
 
         bool ppu_timing;
+        uint8_t open_bus;
 };

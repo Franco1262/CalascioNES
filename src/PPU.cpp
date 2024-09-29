@@ -38,24 +38,26 @@ uint8_t PPU::cpu_reads(uint16_t address)
     uint8_t data;
     switch(address)
     {
-        case 0: {data = PPUCTRL; break; }
-        case 1: {data = PPUMASK; break; }
+        case 0: {data = open_bus; break; }
+        case 1: {data = open_bus; break; }
         case 2: 
         {
 
             data = PPUSTATUS;
             w = 0;
             PPUSTATUS &= 0x7F;
+            open_bus = (open_bus & ~0xE0) | (PPUSTATUS & 0xE0);
             break; 
         }
-        case 3: {data = OAMADDR; break; }
+        case 3: {data = open_bus; break; }
         case 4: 
         {
-            data = OAM[OAMADDR]; 
+            data = OAM[OAMADDR];
+            open_bus = data;
             break; 
         }
-        case 5: {data = PPUSCROLL; break; }
-        case 6: {data = PPUADDR; break; }
+        case 5: {data = open_bus; break; }
+        case 6: {data = open_bus; break; }
         case 7: 
         {
             if(v >= 0x3F00 && v <= 0x3FFF)
@@ -72,6 +74,7 @@ uint8_t PPU::cpu_reads(uint16_t address)
                 data = ppudata_read_buffer;
                 ppudata_read_buffer = read(v);
             }
+            open_bus = data;
             increment_v_ppudata();
             break; 
         }
@@ -82,6 +85,7 @@ uint8_t PPU::cpu_reads(uint16_t address)
 
 void PPU::cpu_writes(uint16_t address, uint8_t value)
 {
+    open_bus = value;
     switch(address) 
     {
         case 0: 
@@ -100,8 +104,10 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         case 3: {OAMADDR = value; break; }
         case 4: 
         {
+
             OAM[OAMADDR] = value;  // Directly write value to OAM
             OAMADDR = (OAMADDR + 1) & 0xFF;  // Increment OAMADDR with wrapping
+
             break; 
         }
         case 5: 
@@ -127,7 +133,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             if(!w)
             {
                 t = (t & ~(0x3F << 8)) | ((PPUADDR & 0x3F) << 8);
-                t &= 0x3FFF;
+                t &= 0x7FFF;
                 w = 1;
             }
             else
@@ -869,13 +875,13 @@ void PPU::tick()
     if( (scanline == 241) && (cycles == 1) )
     {
         PPUSTATUS |= 0x80;
-        if(NMI_output)
-        {
-            bus->set_nmi(true);
-        } 
 
+        if(NMI_output)
+            bus->set_nmi(true);
+        
         frame = !frame;
     }
+
 
     cycles++;
     if(cycles == 341)

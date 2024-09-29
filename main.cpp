@@ -94,8 +94,6 @@ int main(int argc, char *argv[])
         draw_frame(ppu);
     }
 
-
-
     return 0;
 }
 
