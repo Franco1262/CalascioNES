@@ -32,7 +32,7 @@ uint32_t SxROM::cpu_reads(uint16_t address)
         if(prg_rom_mode < 2)
         {
             if(address >= 0x8000 && address <= 0xFFFF)
-                mapped_addr = ((prg_bank & 0xE) * 0x8000) + (address & 0x7FFF);
+                mapped_addr = (((prg_bank & 0xE) >> 1) * 0x4000) + (address & 0x7FFF);
         }
 
         else if(prg_rom_mode == 2)
@@ -71,7 +71,7 @@ uint32_t SxROM::ppu_reads(uint16_t address)
         else
         {
             if(address >= 0x0000 && address < 0x2000)
-                mapped_addr = ((chr_bank_0 & 0x1E) * 0x2000) + (address & 0x1FFF);
+                mapped_addr = ( ((chr_bank_0 & 0x1E) >> 1) * 0x2000) + (address & 0x1FFF);
         }
     }
 
