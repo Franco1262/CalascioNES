@@ -144,7 +144,7 @@ uint8_t Cartridge::ppu_reads(uint16_t address)
 void Cartridge::ppu_writes(uint16_t address, uint8_t value)
 {
     if(n_chr_rom_banks == 0)
-        CHR_RAM[address & 0x1FFF] = value;
+        CHR_RAM[mapper->ppu_reads(address)] = value;
 }
 
 uint8_t Cartridge::cpu_reads(uint16_t address)

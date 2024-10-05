@@ -152,6 +152,7 @@ void CPU::tick()
 {
     odd_cycle = !odd_cycle;
 
+    //std::cout << "CPU: "<<std::hex << (int)opcode << " " << std::dec << (int)n_cycles<< std::endl;
     if(oamdma_flag)
         transfer_oam_bytes();
 
@@ -3130,9 +3131,9 @@ void CPU::BRK()
 {
     switch (n_cycles)
     {
-        case 1: { 
+        case 1: 
             n_cycles++; 
-            break; }
+            break; 
         case 2:
             if(!bus->get_nmi())
                 PC++;

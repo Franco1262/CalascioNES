@@ -149,4 +149,5 @@ class PPU
 
         bool ppu_timing;
         uint8_t open_bus;
+        bool supress = false;
 };

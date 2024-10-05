@@ -36,14 +36,21 @@ void PPU::set_ppu_timing(uint8_t value)
 uint8_t PPU::cpu_reads(uint16_t address)
 {
     uint8_t data;
+
     switch(address)
     {
         case 0: {data = open_bus; break; }
         case 1: {data = open_bus; break; }
         case 2: 
         {
-
-            data = PPUSTATUS;
+            if( (scanline == 241 && cycles == 1) || (scanline == 241 && cycles == 0))
+            {
+                data = PPUSTATUS & 0x7F;
+                if((scanline == 241 && cycles == 0))
+                    supress = true;
+            }
+            else
+                data = PPUSTATUS;
             w = 0;
             PPUSTATUS &= 0x7F;
             open_bus = (open_bus & ~0xE0) | (PPUSTATUS & 0xE0);
@@ -66,7 +73,6 @@ uint8_t PPU::cpu_reads(uint16_t address)
                     data = frame_palette[v & 0xF];       
                 else 
                     data = frame_palette[v & 0x1F];
-
                 ppudata_read_buffer = read(v - 0x1000);
             }
             else
@@ -90,9 +96,11 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
     {
         case 0: 
         {
+            if(((PPUCTRL & 0x80) == 0) && (value & 0x80) && (PPUSTATUS & 0x80))
+                bus->set_nmi(true);
             PPUCTRL = value;
             t = (t & ~(0x3 << 10)) | ((PPUCTRL & 0x3) << 10);
-            NMI_output = (PPUCTRL & 0x80);
+
             break; 
         }
         case 1: 
@@ -419,8 +427,8 @@ void inline PPU::increment_v_ppudata()
 {
     if(((scanline < 240) || (scanline == (total_scanlines - 1))) && IS_PPUMASK_SET(PPUMASK))
     {
-        increment_hori_v();
         increment_vert_v();
+        increment_hori_v();
     }
 
     else
@@ -645,8 +653,22 @@ void PPU::draw_background_pixel()
 
     if( !(!(PPUMASK & 0x2) && ((cycles-1) < 8)) )
     {
-        screen[index] = system_palette[get_palette_color(palette_index, pixel)];
-        scanline_buffer[cycles - 1] = pixel;
+        if((PPUMASK & 0x8))
+        {
+            screen[index] = system_palette[get_palette_color(palette_index, pixel)];
+            scanline_buffer[cycles - 1] = pixel;
+        }
+        else
+        {
+            if(v >= 0x3F00 && v <= 0x3FFF)
+            {
+                screen[index] = system_palette[read(v)];
+                std::cout << "A";
+            }
+            else
+                screen[index] = system_palette[get_palette_color(0, 0)];
+            scanline_buffer[cycles - 1] = pixel;            
+        }
     }
     else
     {
@@ -654,7 +676,6 @@ void PPU::draw_background_pixel()
         scanline_buffer[cycles - 1] = pixel;
     }
     
-
     if(sprite_0_current_scanline)
     {
         uint8_t sprite_0_x_coord = scanline_sprite_buffer[3];
@@ -704,6 +725,7 @@ void PPU::check_sprite_0_hit()
                 if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
                 {
                     PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
+                    //std::cout << scanline << " " << cycles << std::endl;
                 }               
             }
         }  
@@ -713,6 +735,7 @@ void PPU::check_sprite_0_hit()
 
 void PPU::tick()
 {
+    //std::cout <<"PPU: " << scanline << " " << cycles << std::endl;
     is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
     if((scanline < 240) || (scanline == (total_scanlines - 1)))
     {
@@ -730,7 +753,12 @@ void PPU::tick()
                     bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
                     load_shifters();
                     if( is_rendering_enabled )
-                        increment_hori_v();                
+                    {
+                        if(cycles == 256)
+                            increment_vert_v();
+                        increment_hori_v(); 
+                        
+                    }               
                     
                     break;
                 }
@@ -773,21 +801,17 @@ void PPU::tick()
                 }         
             }
         }
+        if( is_rendering_enabled && (cycles == 257))
+            v = (v & ~(0x41F)) | (t & 0x41F);  
 
         if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == (total_scanlines - 1)))
             v = (v & ~(0x7BE0)) | (t & 0x7BE0);
-
-        if( is_rendering_enabled && cycles == 256)
-            increment_vert_v();
 
         if( is_rendering_enabled && (scanline != (total_scanlines - 1)) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation(); 
         
         if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != (total_scanlines - 1) && scanline != 0)
             draw_sprite_pixel();
-
-         if( is_rendering_enabled && (cycles == 257))
-            v = (v & ~(0x41F)) | (t & 0x41F);  
 
         if(is_rendering_enabled && (cycles > 256) && (cycles < 321))
         {         
@@ -872,13 +896,13 @@ void PPU::tick()
         }
     }
                 
-    if( (scanline == 241) && (cycles == 1) )
-    {
-        PPUSTATUS |= 0x80;
-
-        if(NMI_output)
+    if( (scanline == 241) && (cycles == 1))
+    {   
+        if(!supress)
+            PPUSTATUS |= 0x80;        
+        if((PPUCTRL & 0x80) && (PPUSTATUS & 0x80))
             bus->set_nmi(true);
-        
+
         frame = !frame;
     }
 
@@ -891,15 +915,13 @@ void PPU::tick()
         j = 0;
         i = 0;
         sprite_0_current_scanline = sprite_0_next_scanline;
-
+        supress = false;
 
         if(scanline == total_scanlines)
         {
             scanline = 0;
             if( is_rendering_enabled && odd && (ppu_timing == 0))
-            {
                 cycles = 1;
-            }
             odd ^= 1;
         }
     }

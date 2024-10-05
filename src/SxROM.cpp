@@ -13,43 +13,29 @@ uint32_t SxROM::cpu_reads(uint16_t address)
 {
     uint32_t mapped_addr;
 
+    //PRG RAM
     if(address >= 0x6000 && address < 0x8000)
+        mapped_addr = address & 0x1FFF;
+    
+    //PRG ROM
+    else if(address >= 0x8000 && address <= 0xFFFF)
     {
-        if(!chr_rom_mode)
-            mapped_addr =  address & 0x1FFF;
-        else
+        switch(prg_rom_mode)
         {
-            if(address >= 0x6000 && address < 0x7000)
-                mapped_addr = (((chr_bank_0 & 0xC) >> 2) * 0x1000) + (address & 0x0FFF);
-            
-            else
-                mapped_addr = (((chr_bank_1 & 0xC) >> 2) * 0x1000) + (address & 0x0FFF);
-        }
-    }
+            case 0:
+            case 1:
+                mapped_addr = (((prg_bank & 0xFE) >> 1) * 0x8000) + (address & 0x7FFF);;
+                break; 
+            case 2:
+                if(address < 0xC000) mapped_addr = address & 0x3FFF;
+                else mapped_addr = ((prg_bank & 0xFF) * 0x4000) + (address & 0x3FFF);
+                break;
 
-    else
-    {
-        if(prg_rom_mode < 2)
-        {
-            if(address >= 0x8000 && address <= 0xFFFF)
-                mapped_addr = (((prg_bank & 0xE) >> 1) * 0x4000) + (address & 0x7FFF);
-        }
-
-        else if(prg_rom_mode == 2)
-        {
-            if(address >= 0x8000 && address < 0xC000)
-                mapped_addr = address & 0x3FFF;  // Map to the lower PRG-ROM bank
-            else if(address >= 0xC000 && address <= 0xFFFF)
-                mapped_addr = ((prg_bank) * 0x4000) + (address & 0x3FFF);
-        }
-
-        else if(prg_rom_mode == 3)
-        {
-            if(address >= 0x8000 && address < 0xC000)
-                mapped_addr = ((prg_bank) * 0x4000) + (address & 0x3FFF);
-            else if(address >= 0xC000 && address <= 0xFFFF)
-                mapped_addr = ((n_prg_rom_banks- 1) * 0x4000) + (address & 0x3FFF);
-        }
+            case 3:
+                if(address < 0xC000) mapped_addr = ((prg_bank & 0xFF) * 0x4000) + (address & 0x3FFF);
+                else mapped_addr = ((n_prg_rom_banks - 1) * 0x4000) + (address & 0x3FFF);
+                break;
+        }     
     }
 
     return mapped_addr; 
@@ -59,37 +45,39 @@ uint32_t SxROM::ppu_reads(uint16_t address)
 {
     uint32_t mapped_addr = 0;
 
+    //CHR ROM
     if(n_chr_rom_banks != 0)
     {
         if(chr_rom_mode)
         {
-            if(address >= 0x0000 && address < 0x1000)      
-                mapped_addr = ((chr_bank_0 & 0x1F) * 0x1000) + (address & 0x0FFF);
+            if(address >= 0x0000 && address < 0x1000)
+                mapped_addr = (chr_bank_0 * 0x1000) + (address & 0x0FFF);
+
             else if(address >= 0x1000 && address < 0x2000)
-                mapped_addr = ((chr_bank_1 & 0x1F) * 0x1000) + (address & 0x0FFF);           
+                mapped_addr = (chr_bank_1 * 0x1000) + (address & 0x0FFF);         
         }
         else
         {
             if(address >= 0x0000 && address < 0x2000)
-                mapped_addr = ( ((chr_bank_0 & 0x1E) >> 1) * 0x2000) + (address & 0x1FFF);
+                mapped_addr = ( ((chr_bank_0 & 0xFE) >> 1) * 0x2000) + (address & 0x1FFF);
         }
     }
-
+    //CHR RAM
     else
     {
         if(chr_rom_mode)
         {
-            if(address >= 0x0000 && address < 0x1000)      
+            if(address >= 0x0000 && address < 0x1000)
                 mapped_addr = ((chr_bank_0 & 0x1) * 0x1000) + (address & 0x0FFF);
+
             else if(address >= 0x1000 && address < 0x2000)
                 mapped_addr = ((chr_bank_1 & 0x1) * 0x1000) + (address & 0x0FFF);             
         }
         else
-        {
-            if(address >= 0x0000 && address < 0x2000)
-                mapped_addr = address & 0x1FFF;
-        }
+            mapped_addr = address & 0x1FFF;
     }
+        
+    
     return mapped_addr;
 }
 

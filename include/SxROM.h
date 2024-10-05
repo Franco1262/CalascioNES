@@ -23,6 +23,7 @@ class SxROM : public Mapper
         short n_write;
         uint8_t prg_rom_mode;
         bool chr_rom_mode;
+        uint8_t old;
 
         uint32_t address_bank_0;
         uint32_t address_bank_1;
