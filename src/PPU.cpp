@@ -209,7 +209,10 @@ uint8_t PPU::read(uint16_t address)
     else if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
         if((address & 0x3) == 0x00)
-            data = frame_palette[0];       
+        {
+            if((address & 0x3) == 0x00)
+                data = frame_palette[0];
+        }       
         else 
             data = frame_palette[address & 0x1F];
     }
@@ -258,7 +261,6 @@ void PPU::write(uint16_t address, uint8_t value)
 
     else if( (address >= 0x3F00) && (address <= 0x3FFF) )
     {
-        address = address & 0x1F;
         if((address & 0x3) == 0x00 )
             frame_palette[address & 0xF] = value;
         else 
@@ -660,20 +662,22 @@ void PPU::draw_background_pixel()
         }
         else
         {
-            if(v >= 0x3F00 && v <= 0x3FFF)
+            screen[index] = system_palette[get_palette_color(0, 0)];
+
+            if(!is_rendering_enabled && (v >= 0x3F00) && (v <= 0x3FFF))
             {
-                screen[index] = system_palette[read(v)];
-                std::cout << "A";
+                if((v & 0x3) == 0x00)
+                    screen[index] = system_palette[frame_palette[v & 0xF]];    
+                else 
+                    screen[index] = system_palette[frame_palette[v & 0x1F]];              
             }
-            else
-                screen[index] = system_palette[get_palette_color(0, 0)];
-            scanline_buffer[cycles - 1] = pixel;            
+            scanline_buffer[cycles - 1] = 0x00;            
         }
     }
     else
     {
         screen[index] = system_palette[get_palette_color(0, 0)];
-        scanline_buffer[cycles - 1] = pixel;
+        scanline_buffer[cycles - 1] = 0x00;
     }
     
     if(sprite_0_current_scanline)
@@ -742,7 +746,7 @@ void PPU::tick()
         if( ((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337)) ) 
         {
 
-            if( is_rendering_enabled && (scanline != (total_scanlines - 1)) && (cycles < 257))
+            if((scanline != (total_scanlines - 1)) && (cycles < 257))
                 draw_background_pixel();
             shift_bits(); 
 
