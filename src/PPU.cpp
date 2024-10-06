@@ -43,11 +43,15 @@ uint8_t PPU::cpu_reads(uint16_t address)
         case 1: {data = open_bus; break; }
         case 2: 
         {
-            if( (scanline == 241 && cycles == 1) || (scanline == 241 && cycles == 0))
+            if((scanline == 241 && cycles == 0))
             {
                 data = PPUSTATUS & 0x7F;
-                if((scanline == 241 && cycles == 0))
-                    supress = true;
+                supress = true;
+            }
+            else if( (scanline == 241 && cycles == 1) || (scanline == 241 && cycles == 2))
+            {
+                data = PPUSTATUS | 0x80;
+                supress = true;
             }
             else
                 data = PPUSTATUS;
