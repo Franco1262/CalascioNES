@@ -2,12 +2,13 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "Logger.h"
 
 class Bus;
 class PPU
 {
     public:
-        PPU();
+        PPU(std::shared_ptr<Logger> logger);
         ~PPU();
         void tick();
 
@@ -54,6 +55,8 @@ class PPU
         uint8_t OAMDMA;
 
         std::shared_ptr<Bus> bus;
+
+        std::shared_ptr<Logger> logger;
 
 
         uint8_t nametable[0x0800]; //VRAM 2kb
@@ -150,4 +153,5 @@ class PPU
         bool ppu_timing;
         uint8_t open_bus;
         bool supress = false;
+        bool supress_v = false;
 };

@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <memory>
+#include "Logger.h"
 /* #include "nlohmann/json.hpp" */
 
 
@@ -14,7 +15,7 @@ class CPU
 {
     public:
 
-        CPU();
+        CPU(std::shared_ptr<Logger> logger);
         ~CPU();
         void tick();
         bool open_file(std::string name);
@@ -28,10 +29,11 @@ class CPU
 
     private:
 
+        int cycles = 0;
         uint8_t opcode;
 /*         json json_data; */
         std::shared_ptr<Bus> bus;
-
+        std::shared_ptr<Logger> logger;
         //Registers
         uint8_t Accumulator;
         uint8_t X;

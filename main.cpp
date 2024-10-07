@@ -6,14 +6,12 @@
 #include "CPU.h"
 #include "PPU.h"
 #include "Cartridge.h"
-#include "Bus.h" 
+#include "Bus.h"
+#include "Logger.h"
 
 const int SCREEN_WIDTH = 256;
 const int SCREEN_HEIGHT = 240;
 const int SCALE = 3;
-
-const int FREQUENCY = 1000000;
-const int DELAY = 1 / FREQUENCY;
 
 struct App{
 	SDL_Renderer *renderer;
@@ -28,16 +26,18 @@ void draw_pattern_table(std::shared_ptr<PPU> ppu, SDL_Texture* patternBuffer0, S
 
 int main(int argc, char *argv[])
 {
-    std::shared_ptr<PPU> ppu = std::make_shared<PPU>();
+    std::shared_ptr<Logger> logger = std::make_shared<Logger>("logger.txt");
+    std::shared_ptr<PPU> ppu = std::make_shared<PPU>(logger);
     std::shared_ptr<Cartridge> cart = std::make_shared<Cartridge>(argv[1]);
-    CPU cpu;
+    CPU cpu(logger);
 
     std::shared_ptr<Bus> bus = std::make_shared<Bus>(ppu, cart);
     cpu.connect_bus(bus);
     ppu->connect_bus(bus);
 
-    cpu.reset();
     ppu->reset();
+    cpu.reset();
+
 
 
     initSDL();
@@ -88,12 +88,11 @@ int main(int argc, char *argv[])
             }
         }
 
+
         while (current_frame == ppu->get_frame() && !pause) 
         {   
             cpu.tick();  // 1 CPU cycle
-
             ppu_accumulator += PPU_TIMING;
-
             while (ppu_accumulator >= 1.0)
             {
                 ppu->tick(); // 1 PPU cycle

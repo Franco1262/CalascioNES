@@ -2,10 +2,12 @@
 #include <cstdint>
 #include "PPU.h"
 #include "Bus.h"
+#include <sstream>
+#include <iomanip>
 
 #define IS_PPUMASK_SET(mask) (((mask) & 0x10) || ((mask) & 0x8))
 
-PPU::PPU() : w(false) ,cycles(0), scanline(0)
+PPU::PPU(std::shared_ptr<Logger> logger) : w(false) ,cycles(0), scanline(0)
 {
     odd = false;
     frame = false;
@@ -18,6 +20,7 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
     total_scanlines = 262;
     j = 0;
     i = 0;
+    this->logger = logger;
 }
 
 PPU::~PPU() {}
@@ -36,6 +39,7 @@ void PPU::set_ppu_timing(uint8_t value)
 uint8_t PPU::cpu_reads(uint16_t address)
 {
     uint8_t data;
+    //logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: READING $200" + std::to_string(address) );
 
     switch(address)
     {
@@ -96,6 +100,14 @@ uint8_t PPU::cpu_reads(uint16_t address)
 void PPU::cpu_writes(uint16_t address, uint8_t value)
 {
     open_bus = value;
+
+/*     logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
+    " Value: " + [](int value) {
+        std::ostringstream oss;
+        oss << std::hex << value; // Convert value to hex
+        return oss.str();         // Return the formatted string
+    }(value)); */
+
     switch(address) 
     {
         case 0: 
@@ -124,6 +136,12 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         }
         case 5: 
         {
+            logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
+                " Value: " + [](int value) {
+                    std::ostringstream oss;
+                    oss << std::hex << value; // Convert value to hex
+                    return oss.str();         // Return the formatted string
+                }(value));
             PPUSCROLL = value;
             if(!w)
             {
@@ -141,6 +159,12 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
 
         case 6: 
         {
+            logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
+                " Value: " + [](int value) {
+                    std::ostringstream oss;
+                    oss << std::hex << value; // Convert value to hex
+                    return oss.str();         // Return the formatted string
+                }(value));
             PPUADDR = value;
             if(!w)
             {

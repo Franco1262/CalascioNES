@@ -1,12 +1,14 @@
 #include "CPU.h"
 #include "Bus.h"
+#include <sstream>
+#include <iomanip>
 
 //Testeados ORA, ADC, SBC, CMP, CPX, CPY, EOR, AND, LDA, LDX, LDY, BIT, ASL, LSR, ROL, ROR, DEC, INC, STA, STX, STY, CLC
 //CLD, CLV, CLI, SEC, SED, SEI, DEX, DEY, INX, INY, NOP, TAX, TAY, TSX, TXA, TXS, TYA, BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS
 //PHA, PLA, PLP, PHP, JSR, RTS, RTI
 
 
-CPU::CPU()
+CPU::CPU(std::shared_ptr<Logger> logger)
 {
     Instr = 
     {
@@ -78,6 +80,7 @@ CPU::CPU()
 
     odd_cycle = false;
     cycles_dma = 0;
+    this->logger = logger;
 }
 CPU::~CPU() {}
 
@@ -151,7 +154,16 @@ void CPU::transfer_oam_bytes()
 void CPU::tick()
 {
     odd_cycle = !odd_cycle;
-
+/*     logger->log("PC: " + [](int PC) {
+        std::ostringstream oss;
+        oss << std::hex << PC; // Convert value to hex
+        return oss.str();         // Return the formatted string
+    }(PC) + "| Cycle: " + std::to_string(PC) + " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
+        std::ostringstream oss;
+        oss << std::hex << opcode; // Convert value to hex
+        return oss.str();         // Return the formatted string
+    }(opcode) + "| Cycle: " + std::to_string(n_cycles));
+    cycles++; */
     //std::cout << "CPU: "<<std::hex << (int)opcode << " " << std::dec << (int)n_cycles<< std::endl;
     if(oamdma_flag)
         transfer_oam_bytes();
