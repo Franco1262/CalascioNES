@@ -26,19 +26,15 @@ void draw_pattern_table(std::shared_ptr<PPU> ppu, SDL_Texture* patternBuffer0, S
 
 int main(int argc, char *argv[])
 {
-    std::shared_ptr<Logger> logger = std::make_shared<Logger>("logger.txt");
-    std::shared_ptr<PPU> ppu = std::make_shared<PPU>(logger);
+    std::shared_ptr<PPU> ppu = std::make_shared<PPU>();
     std::shared_ptr<Cartridge> cart = std::make_shared<Cartridge>(argv[1]);
-    CPU cpu(logger);
+    CPU cpu;
 
     std::shared_ptr<Bus> bus = std::make_shared<Bus>(ppu, cart);
     cpu.connect_bus(bus);
     ppu->connect_bus(bus);
 
     ppu->reset();
-    cpu.reset();
-
-
 
     initSDL();
 
@@ -60,6 +56,7 @@ int main(int argc, char *argv[])
 
     bool pause = false;
 
+    ppu->tick();
     while (true) 
     {
         SDL_Event event;
@@ -71,7 +68,7 @@ int main(int argc, char *argv[])
             else if (event.type == SDL_KEYDOWN)
             {
                 if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
-                    pause = !pause;
+                    pause = !pause;  
                 else if(event.key.keysym.scancode == SDL_SCANCODE_P)
                 {
                     if(PPU_TIMING == 3)
@@ -87,19 +84,16 @@ int main(int argc, char *argv[])
                 }
             }
         }
-
-
         while (current_frame == ppu->get_frame() && !pause) 
         {   
-            cpu.tick();  // 1 CPU cycle
             ppu_accumulator += PPU_TIMING;
+            cpu.tick();  // 1 CPU cycle
             while (ppu_accumulator >= 1.0)
             {
                 ppu->tick(); // 1 PPU cycle
                 ppu_accumulator -= 1.0;
             }
         }
-
         current_frame = ppu->get_frame();        
         draw_frame(ppu, screenBuffer, nametableBuffer0, nametableBuffer1, spriteBuffer);
     }

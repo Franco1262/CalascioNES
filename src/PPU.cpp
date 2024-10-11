@@ -7,7 +7,7 @@
 
 #define IS_PPUMASK_SET(mask) (((mask) & 0x10) || ((mask) & 0x8))
 
-PPU::PPU(std::shared_ptr<Logger> logger) : w(false) ,cycles(0), scanline(0)
+PPU::PPU() : logger("PPULOG.txt"),w(false) ,cycles(0), scanline(0)
 {
     odd = false;
     frame = false;
@@ -20,7 +20,6 @@ PPU::PPU(std::shared_ptr<Logger> logger) : w(false) ,cycles(0), scanline(0)
     total_scanlines = 262;
     j = 0;
     i = 0;
-    this->logger = logger;
 }
 
 PPU::~PPU() {}
@@ -39,8 +38,6 @@ void PPU::set_ppu_timing(uint8_t value)
 uint8_t PPU::cpu_reads(uint16_t address)
 {
     uint8_t data;
-    //logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: READING $200" + std::to_string(address) );
-
     switch(address)
     {
         case 0: {data = open_bus; break; }
@@ -101,19 +98,16 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
 {
     open_bus = value;
 
-/*     logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
-    " Value: " + [](int value) {
-        std::ostringstream oss;
-        oss << std::hex << value; // Convert value to hex
-        return oss.str();         // Return the formatted string
-    }(value)); */
-
     switch(address) 
     {
+    
         case 0: 
         {
             if(((PPUCTRL & 0x80) == 0) && (value & 0x80) && (PPUSTATUS & 0x80))
+            {
+                logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
                 bus->set_nmi(true);
+            }
             PPUCTRL = value;
             t = (t & ~(0x3 << 10)) | ((PPUCTRL & 0x3) << 10);
 
@@ -136,12 +130,6 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         }
         case 5: 
         {
-            logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
-                " Value: " + [](int value) {
-                    std::ostringstream oss;
-                    oss << std::hex << value; // Convert value to hex
-                    return oss.str();         // Return the formatted string
-                }(value));
             PPUSCROLL = value;
             if(!w)
             {
@@ -158,13 +146,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         }
 
         case 6: 
-        {
-            logger->log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
-                " Value: " + [](int value) {
-                    std::ostringstream oss;
-                    oss << std::hex << value; // Convert value to hex
-                    return oss.str();         // Return the formatted string
-                }(value));
+        {   
             PPUADDR = value;
             if(!w)
             {
@@ -185,9 +167,38 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             PPUDATA = value;
             write(v, PPUDATA);
             increment_v_ppudata();
+/*             logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: READING $200" + std::to_string(address) +
+                    " Value: " + 
+                    [](int data) {
+                    std::ostringstream oss;
+                    oss << std::hex << data; 
+                    return oss.str();         
+                    }(v) + 
+                    " V: " + [](int v) {
+                    std::ostringstream oss;
+                    oss << std::hex << v; 
+                    return oss.str();         
+                    }(v)); */
             break; 
         }
-    }    
+    } 
+
+/*     logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
+        " Value: " + [](int value) {
+            std::ostringstream oss;
+            oss << std::hex << value; 
+            return oss.str();         
+            }(value) + 
+            " V: " + [](int v) {
+            std::ostringstream oss;
+            oss << std::hex << v; 
+            return oss.str();         
+            }(v) + 
+            " T: " + [](int t) {
+            std::ostringstream oss;
+            oss << std::hex << t; 
+            return oss.str();         
+            }(t));  */  
 }
 
 uint8_t PPU::read(uint16_t address)
@@ -310,6 +321,13 @@ std::vector<uint32_t>& PPU::get_screen()
 void PPU::reset()
 {
     PPUADDR = PPUCTRL = PPUDATA = PPUMASK = PPUSCROLL = PPUSTATUS = 0x00;
+    odd = false;
+    frame = false;
+    j = 0;
+    i = 0;
+    w = false;
+    scanline = cycles = 0;
+    tick();
 }
 
 uint32_t PPU::get_palette_color(uint8_t palette_x, uint8_t pixel)
@@ -931,12 +949,16 @@ void PPU::tick()
     if( (scanline == 241) && (cycles == 1))
     {   
         if(!supress)
-            PPUSTATUS |= 0x80;        
+            PPUSTATUS |= 0x80;
         if((PPUCTRL & 0x80) && (PPUSTATUS & 0x80))
+        {
+            //logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
             bus->set_nmi(true);
+        }  
 
         frame = !frame;
-    }
+    }  
+
 
 
     cycles++;
@@ -948,7 +970,7 @@ void PPU::tick()
         i = 0;
         sprite_0_current_scanline = sprite_0_next_scanline;
         supress = false;
-
+        nmi_ocurred = false;
         if(scanline == total_scanlines)
         {
             scanline = 0;

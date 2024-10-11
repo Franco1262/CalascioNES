@@ -8,7 +8,7 @@ class Bus;
 class PPU
 {
     public:
-        PPU(std::shared_ptr<Logger> logger);
+        PPU();
         ~PPU();
         void tick();
 
@@ -56,7 +56,7 @@ class PPU
 
         std::shared_ptr<Bus> bus;
 
-        std::shared_ptr<Logger> logger;
+        Logger logger;
 
 
         uint8_t nametable[0x0800]; //VRAM 2kb
@@ -91,6 +91,8 @@ class PPU
         int cycles;
         int scanline;
         bool frame;
+        bool nmi_ocurred = false;
+        bool logged = false;
 
         uint8_t nametable_id;
         uint8_t attribute;

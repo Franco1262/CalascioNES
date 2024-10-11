@@ -8,7 +8,7 @@
 //PHA, PLA, PLP, PHP, JSR, RTS, RTI
 
 
-CPU::CPU(std::shared_ptr<Logger> logger)
+CPU::CPU() : logger("CPULOG.txt")
 {
     Instr = 
     {
@@ -80,7 +80,10 @@ CPU::CPU(std::shared_ptr<Logger> logger)
 
     odd_cycle = false;
     cycles_dma = 0;
-    this->logger = logger;
+    n_cycles = 0;
+    PC = 0x0000;
+    reset_flag = true;
+    oamdma_flag = false;
 }
 CPU::~CPU() {}
 
@@ -154,19 +157,19 @@ void CPU::transfer_oam_bytes()
 void CPU::tick()
 {
     odd_cycle = !odd_cycle;
-/*     logger->log("PC: " + [](int PC) {
-        std::ostringstream oss;
-        oss << std::hex << PC; // Convert value to hex
-        return oss.str();         // Return the formatted string
-    }(PC) + "| Cycle: " + std::to_string(PC) + " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
-        std::ostringstream oss;
-        oss << std::hex << opcode; // Convert value to hex
-        return oss.str();         // Return the formatted string
-    }(opcode) + "| Cycle: " + std::to_string(n_cycles));
-    cycles++; */
     //std::cout << "CPU: "<<std::hex << (int)opcode << " " << std::dec << (int)n_cycles<< std::endl;
     if(oamdma_flag)
+    {
+/*         logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
+            " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
+            std::ostringstream oss;
+            oss << std::hex << opcode; 
+            return oss.str();}
+            (opcode) + " SPRITE DMA"); */
         transfer_oam_bytes();
+    }
+    else if(reset_flag)
+        reset();
 
     else
     {
@@ -177,29 +180,58 @@ void CPU::tick()
             finish = false;
         }
         else if(n_cycles < Instr[opcode].cycles)
+        {
+/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
+                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
+                    std::ostringstream oss;
+                    oss << std::hex << opcode; 
+                    return oss.str();}
+                    (opcode) + "| Cycle: " + std::to_string(n_cycles)); */
+            
             (this->*Instr[opcode].function)();
+        }
         
         if(n_cycles == Instr[opcode].cycles)
         {
+            if(bus->get_nmi())
+                NMI = true;
             n_cycles = 0;
             finish = true;
         }
     }
+    cycles++;
 }
 
 void CPU::fetch()
 {
-    
-    if(bus->get_nmi())
-    {
         opcode =  0x00; //BRK instruction. Handles NMI
-    }
-    else
-    {
-        opcode = read(PC);
-        /* std::cout << std::hex << (int)opcode << std::endl; */
-        PC++;
-    }
+        start_logging = true;
+             
+
+        if(NMI)
+        {
+            opcode = 0x00;
+/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
+                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
+                    std::ostringstream oss;
+                    oss << std::hex << opcode; 
+                    return oss.str();}
+                    (opcode) + "| Cycle: " + std::to_string(n_cycles) + " START OF BRK FOR NMI"); */
+        }
+
+        else
+        {
+            opcode = read(PC);
+/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
+                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
+                    std::ostringstream oss;
+                    oss << std::hex << opcode; 
+                    return oss.str();}
+                    (opcode) + "| Cycle: " + std::to_string(n_cycles)); */
+            PC++;
+        }
+
+
     n_cycles++;
 }
 
@@ -3147,7 +3179,7 @@ void CPU::BRK()
             n_cycles++; 
             break; 
         case 2:
-            if(!bus->get_nmi())
+            if(!NMI)
                 PC++;
 
             write(0x100 + SP, (PC & 0xFF00) >> 8);
@@ -3167,17 +3199,18 @@ void CPU::BRK()
             break;
         case 5:
             PC = 0x0000;
-            if(bus->get_nmi())
+            if(NMI)
                 PC |= read(0xFFFA);
             else
                 PC |= read(0xFFFE);
             n_cycles++;
             break;
         case 6:
-            if(bus->get_nmi())
+            if(NMI)
             {
                 PC |= (read(0xFFFB) << 8);
                 bus->set_nmi(false);
+                NMI = false;
             }
             else
             {
@@ -3342,8 +3375,44 @@ bool CPU::compare(int line)
 
 void CPU::reset()
 {
-    Accumulator = X = Y = 0;
-    PC = (read(0xFFFC) | (read(0xFFFD) << 8));
-    SP = 0xFD;
-    P = 0x04;
+    switch(n_cycles)
+    {
+        case 0:
+            Accumulator = X = Y = SP = 0;
+            P = 0x4;
+            n_cycles++;
+            break;
+        case 1:
+        case 2:
+            n_cycles++;
+            break;
+        case 3:
+        case 4:
+        case 5:
+            SP--;
+            n_cycles++;
+            break;
+        case 6:
+            PC |= read(0xFFFC);
+            n_cycles++;
+            break;
+        case 7:
+            PC |= read(0xFFFD) << 8;
+            n_cycles = 0;
+            reset_flag = false;
+            break;
+
+
+    }
+}
+
+void CPU::set_reset()
+{
+    reset_flag = true;
+    odd_cycle = false;
+    cycles_dma = 0;
+    n_cycles = 0;
+    PC = 0x0000;
+    reset_flag = true;
+    oamdma_flag = false;
 }

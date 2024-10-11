@@ -15,7 +15,7 @@ class CPU
 {
     public:
 
-        CPU(std::shared_ptr<Logger> logger);
+        CPU();
         ~CPU();
         void tick();
         bool open_file(std::string name);
@@ -25,6 +25,7 @@ class CPU
         bool compare(int line);
         void connect_bus(std::shared_ptr<Bus> bus);
         void reset();
+        void set_reset();
         uint8_t get_opcode();
 
     private:
@@ -33,7 +34,8 @@ class CPU
         uint8_t opcode;
 /*         json json_data; */
         std::shared_ptr<Bus> bus;
-        std::shared_ptr<Logger> logger;
+        Logger logger;
+        bool start_logging = false;
         //Registers
         uint8_t Accumulator;
         uint8_t X;
@@ -49,7 +51,8 @@ class CPU
         bool alignment_needed;
         uint8_t dma_read;
         uint16_t dma_address;
-       
+        bool reset_flag;
+        bool NMI = false;
         
         uint8_t memory[0x800]; //2kb ram internal to cpu
 
