@@ -53,10 +53,8 @@ int main(int argc, char *argv[])
 
     float ppu_accumulator = 0.0;
     float PPU_TIMING = 3;
-
     bool pause = false;
 
-    ppu->tick();
     while (true) 
     {
         SDL_Event event;
@@ -87,12 +85,12 @@ int main(int argc, char *argv[])
         while (current_frame == ppu->get_frame() && !pause) 
         {   
             ppu_accumulator += PPU_TIMING;
-            cpu.tick();  // 1 CPU cycle
             while (ppu_accumulator >= 1.0)
             {
                 ppu->tick(); // 1 PPU cycle
                 ppu_accumulator -= 1.0;
             }
+            cpu.tick();  // 1 CPU cycle
         }
         current_frame = ppu->get_frame();        
         draw_frame(ppu, screenBuffer, nametableBuffer0, nametableBuffer1, spriteBuffer);

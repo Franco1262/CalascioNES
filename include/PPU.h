@@ -4,6 +4,13 @@
 #include <vector>
 #include "Logger.h"
 
+enum ScanlineType
+{
+    visible_frame = 0,
+    post_render = 240,
+    pre_render = 261
+};
+
 class Bus;
 class PPU
 {
@@ -42,6 +49,8 @@ class PPU
         void set_ppu_timing(uint8_t);
 
         void sprite_evaluation();
+
+        ScanlineType get_scanline_type();
     private:
         //PPU Registers
         uint8_t PPUCTRL;
@@ -53,6 +62,8 @@ class PPU
         uint8_t PPUADDR;
         uint8_t PPUDATA;
         uint8_t OAMDMA;
+
+        ScanlineType scanline_type;
 
         std::shared_ptr<Bus> bus;
 
@@ -77,10 +88,6 @@ class PPU
         uint8_t scanline_sprite_buffer[0x30];
 
 
-        //Flags
-        bool vblank;
-        bool NMI_output;
-
         //PPU internal registers
         uint16_t v; //Current VRAM address; 15bits
         uint16_t t; //Temporary VRAM address; 15bits
@@ -91,8 +98,7 @@ class PPU
         int cycles;
         int scanline;
         bool frame;
-        bool nmi_ocurred = false;
-        bool logged = false;
+
 
         uint8_t nametable_id;
         uint8_t attribute;
@@ -150,10 +156,9 @@ class PPU
         uint8_t attribute_sprite;
         uint8_t tile_id;
         uint16_t address;
-        uint16_t total_scanlines;
+        uint16_t pre_render_scanline;
 
         bool ppu_timing;
         uint8_t open_bus;
         bool supress = false;
-        bool supress_v = false;
 };

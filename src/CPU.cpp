@@ -157,20 +157,13 @@ void CPU::transfer_oam_bytes()
 void CPU::tick()
 {
     odd_cycle = !odd_cycle;
-    //std::cout << "CPU: "<<std::hex << (int)opcode << " " << std::dec << (int)n_cycles<< std::endl;
-    if(oamdma_flag)
-    {
-/*         logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
-            " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
-            std::ostringstream oss;
-            oss << std::hex << opcode; 
-            return oss.str();}
-            (opcode) + " SPRITE DMA"); */
-        transfer_oam_bytes();
-    }
-    else if(reset_flag)
+
+    if(reset_flag)
         reset();
 
+    else if(oamdma_flag)  
+        transfer_oam_bytes();   
+    
     else
     {
         if (n_cycles == 0)
@@ -179,57 +172,35 @@ void CPU::tick()
             fetch();
             finish = false;
         }
-        else if(n_cycles < Instr[opcode].cycles)
-        {
-/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
-                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
-                    std::ostringstream oss;
-                    oss << std::hex << opcode; 
-                    return oss.str();}
-                    (opcode) + "| Cycle: " + std::to_string(n_cycles)); */
-            
+        else if(n_cycles < Instr[opcode].cycles)    
             (this->*Instr[opcode].function)();
-        }
+        
         
         if(n_cycles == Instr[opcode].cycles)
         {
-            if(bus->get_nmi())
-                NMI = true;
             n_cycles = 0;
             finish = true;
         }
     }
+
+    if(bus->get_nmi())
+        NMI = true;
+
     cycles++;
 }
 
 void CPU::fetch()
 {
-        opcode =  0x00; //BRK instruction. Handles NMI
-        start_logging = true;
-             
+    if(NMI)
+    {
+        opcode = 0x00;
+    }
 
-        if(NMI)
-        {
-            opcode = 0x00;
-/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
-                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
-                    std::ostringstream oss;
-                    oss << std::hex << opcode; 
-                    return oss.str();}
-                    (opcode) + "| Cycle: " + std::to_string(n_cycles) + " START OF BRK FOR NMI"); */
-        }
-
-        else
-        {
-            opcode = read(PC);
-/*             logger.log("PC: " + [](int PC) {std::ostringstream oss;oss << std::hex << PC; return oss.str();}(PC) + 
-                    " Cycles: " + std::to_string(cycles) + "| Opcode: " + [](int opcode) {
-                    std::ostringstream oss;
-                    oss << std::hex << opcode; 
-                    return oss.str();}
-                    (opcode) + "| Cycle: " + std::to_string(n_cycles)); */
-            PC++;
-        }
+    else
+    {
+        opcode = read(PC);
+        PC++;
+    }
 
 
     n_cycles++;

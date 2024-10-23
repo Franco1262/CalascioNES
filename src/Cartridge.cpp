@@ -94,10 +94,11 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
         catch(const std::exception& e)
         {
             std::cerr << e.what() << '\n';
+            if (file.gcount() < chr_size) 
+            {
+                std::cout << "Only read " << file.gcount() << " bytes, expected " << chr_size << std::endl;
+            }  
         }
-        if (file.gcount() < chr_size) {
-            std::cout << "Only read " << file.gcount() << " bytes, expected " << chr_size << std::endl;
-}  
 
         //Calculating mapper_id
  

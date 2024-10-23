@@ -17,7 +17,7 @@ PPU::PPU() : logger("PPULOG.txt"),w(false) ,cycles(0), scanline(0)
     nametable_buffer = std::vector<uint32_t>( 256 * 240 );
     sprite_buffer = std::vector<uint32_t>(64 * 64);
     ppu_timing = 0;
-    total_scanlines = 262;
+    pre_render_scanline = 261;
     j = 0;
     i = 0;
 }
@@ -29,9 +29,9 @@ void PPU::set_ppu_timing(uint8_t value)
     ppu_timing = value;
 
     if(ppu_timing == 0)
-        total_scanlines = 262;
+        pre_render_scanline = 261;
     else
-        total_scanlines = 312;
+        pre_render_scanline = 311;
 }
 
 
@@ -105,7 +105,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         {
             if(((PPUCTRL & 0x80) == 0) && (value & 0x80) && (PPUSTATUS & 0x80))
             {
-                logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
+                //logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
                 bus->set_nmi(true);
             }
             PPUCTRL = value;
@@ -118,7 +118,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             PPUMASK = value;
             break; 
         }
-        case 2: {PPUSTATUS =  (PPUSTATUS & ~(0x7F)) | value; break; }
+        case 2: { break; }
         case 3: {OAMADDR = value; break; }
         case 4: 
         {
@@ -151,7 +151,7 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             if(!w)
             {
                 t = (t & ~(0x3F << 8)) | ((PPUADDR & 0x3F) << 8);
-                t &= 0x7FFF;
+                t &= 0x3FFF;
                 w = 1;
             }
             else
@@ -473,10 +473,10 @@ void inline PPU::increment_vert_v()
 
 void inline PPU::increment_v_ppudata()
 {
-    if(((scanline < 240) || (scanline == (total_scanlines - 1))) && IS_PPUMASK_SET(PPUMASK))
+    if(((scanline < 240) || (scanline == pre_render_scanline)) && IS_PPUMASK_SET(PPUMASK))
     {
-        increment_vert_v();
         increment_hori_v();
+        increment_vert_v();
     }
 
     else
@@ -772,27 +772,42 @@ void PPU::check_sprite_0_hit()
         {
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
             {
-                if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
-                {
+                if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))               
                     PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
-                    //std::cout << scanline << " " << cycles << std::endl;
-                }               
+                             
             }
         }  
     }
        
 }
 
+ScanlineType PPU::get_scanline_type()
+{
+    if(scanline >= 0 && scanline < 240)
+        return ScanlineType::visible_frame;
+    else if(scanline >= 240 && scanline < pre_render_scanline)
+        return ScanlineType::post_render;
+    else
+        return ScanlineType::pre_render;
+}
+
+inline bool is_rendering_background(int cycles)
+{
+    return ((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337));
+}
+
 void PPU::tick()
 {
-    //std::cout <<"PPU: " << scanline << " " << cycles << std::endl;
+    
     is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
-    if((scanline < 240) || (scanline == (total_scanlines - 1)))
+    scanline_type = get_scanline_type();
+
+    if( (scanline_type == ScanlineType::visible_frame) || (scanline_type == ScanlineType::pre_render) )
     {
-        if( ((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337)) ) 
+        if( is_rendering_background(cycles) ) 
         {
 
-            if((scanline != (total_scanlines - 1)) && (cycles < 257))
+            if((scanline != pre_render_scanline) && (cycles < 257))
                 draw_background_pixel();
             shift_bits(); 
 
@@ -801,35 +816,22 @@ void PPU::tick()
                 case 0:
                 {
                     bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
-                    load_shifters();
-                    if( is_rendering_enabled )
+                    load_shifters(); 
+                    if(is_rendering_enabled)
                     {
-                        if(cycles == 256)
-                            increment_vert_v();
                         increment_hori_v(); 
-                        
-                    }               
-                    
+                        if(cycles == 256)
+                            increment_vert_v();  
+                    }
+              
                     break;
                 }
-
-                case 1:
-                { 
-                    if( ((scanline == (total_scanlines - 1)) && (cycles == 1)) )
-                    {
-                        //clear vblank
-                        PPUSTATUS &= 0x1F;
-                    }                
-                    break; 
-                }
-
+                
                 case 2:
                 {
                     nametable_id = read((0x2000 | (v & 0x0FFF)));
                     break;
                 }
-
-                case 3: { break; }
 
                 case 4:
                 {
@@ -837,31 +839,22 @@ void PPU::tick()
                     break;
                 }
 
-                case 5: { break; }
-
                 case 6:
                 {
                     bg_lsb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12));
                     break;
-                }
-
-                case 7: 
-                { 
-                    break; 
-                }         
+                }     
             }
         }
+
+        if((scanline == pre_render_scanline) && (cycles == 1))
+            PPUSTATUS &= 0x1F;
+                          
         if( is_rendering_enabled && (cycles == 257))
             v = (v & ~(0x41F)) | (t & 0x41F);  
 
-        if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == (total_scanlines - 1)))
+        if( is_rendering_enabled && ((cycles >= 280) && ((cycles < 305))) && (scanline == pre_render_scanline))
             v = (v & ~(0x7BE0)) | (t & 0x7BE0);
-
-        if( is_rendering_enabled && (scanline != (total_scanlines - 1)) && ((cycles > 64) && ( cycles < 257)))
-            sprite_evaluation(); 
-        
-        if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != (total_scanlines - 1) && scanline != 0)
-            draw_sprite_pixel();
 
         if(is_rendering_enabled && (cycles > 256) && (cycles < 321))
         {         
@@ -931,6 +924,12 @@ void PPU::tick()
            }            
         }
 
+        if( is_rendering_enabled && (scanline != pre_render_scanline) && ((cycles > 64) && ( cycles < 257)))
+            sprite_evaluation(); 
+        
+        if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
+            draw_sprite_pixel();
+
         if( (cycles >= 257) && (cycles <= 320) )
             OAMADDR = 0;
 
@@ -943,7 +942,7 @@ void PPU::tick()
                 secondary_oam[j] = byte;
                 j++;
             }
-        }
+        } 
     }
                 
     if( (scanline == 241) && (cycles == 1))
@@ -951,15 +950,10 @@ void PPU::tick()
         if(!supress)
             PPUSTATUS |= 0x80;
         if((PPUCTRL & 0x80) && (PPUSTATUS & 0x80))
-        {
-            //logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
             bus->set_nmi(true);
-        }  
-
+         
         frame = !frame;
     }  
-
-
 
     cycles++;
     if(cycles == 341)
@@ -970,8 +964,8 @@ void PPU::tick()
         i = 0;
         sprite_0_current_scanline = sprite_0_next_scanline;
         supress = false;
-        nmi_ocurred = false;
-        if(scanline == total_scanlines)
+        
+        if(scanline == (pre_render_scanline+1))
         {
             scanline = 0;
             if( is_rendering_enabled && odd && (ppu_timing == 0))
@@ -980,3 +974,4 @@ void PPU::tick()
         }
     }
 }
+
