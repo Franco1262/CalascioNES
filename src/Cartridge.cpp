@@ -8,11 +8,14 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
 {
     std::ifstream file;
     file.open(filename, std::ios::binary | std::ios::in);
+
     if (file.is_open())
     {
+        //Read header
         if(!file.read(reinterpret_cast<char*> (&header), sizeof(header)))
             throw std::runtime_error("There was a problem reading the header" + (std::string)filename);
 
+        //Check for format
         bool iNESFormat=false;
         if (header.id_string[0]=='N' && header.id_string[1]=='E' && header.id_string[2]=='S' && header.id_string[3]==0x1A)
                 iNESFormat=true;
@@ -25,19 +28,19 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
 
         //Reading the mirror mode of the cartridge
         mirror_mode = static_cast<MIRROR>(header.flag6 & 0x01);
-        //Implement multiplier notation later
+        //Number of prg and chr banks
         n_prg_rom_banks = (header.prg_rom_lsb | ((header.prg_chr_rom_size & 0x0F) << 8)) & 0xFFF;
         n_chr_rom_banks = (header.chr_rom_lsb | ((header.prg_chr_rom_size & 0xF0) << 8)) & 0xFFF;
 
+        //If trainer, ignore it
         if(header.flag6 & 0x4)
-            std::cout << "Trainer";
-
+            file.ignore(512);
+        
         
         //Reserving memory for the PRG-ROM 
         PRG_ROM.reserve(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
         PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
         //Reserving memory for the CHR-ROM
-
         uint32_t chr_size;
 
         if ( (n_chr_rom_banks & 0xF00) == 0xF00 )
@@ -87,9 +90,24 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
         //Reading CHR-ROM
         try
         {
-        if(n_chr_rom_banks != 0)
-            if(!file.read(reinterpret_cast<char*> (CHR_ROM.data()), chr_size))
-                throw std::runtime_error("There was a problem reading CHR-ROM");
+            if(n_chr_rom_banks != 0)
+            {
+                std::streampos currentPos = file.tellg();
+
+                // Seek to the end of the file
+                file.seekg(0, std::ios::end);
+                
+                // Get the total size of the file
+                std::streampos endPos = file.tellg();
+
+                // Return to the original position
+                file.seekg(currentPos);
+
+                // Calculate the number of bytes remaining
+                std::streampos bytes_to_read = endPos - currentPos;
+                if(!file.read(reinterpret_cast<char*> (CHR_ROM.data()), bytes_to_read))
+                    throw std::runtime_error("There was a problem reading CHR-ROM");
+            }
         }
         catch(const std::exception& e)
         {
@@ -97,6 +115,7 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
             if (file.gcount() < chr_size) 
             {
                 std::cout << "Only read " << file.gcount() << " bytes, expected " << chr_size << std::endl;
+                file.read(reinterpret_cast<char*> (CHR_ROM.data()), file.gcount());
             }  
         }
 
@@ -124,7 +143,6 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
     }
     else
         throw std::runtime_error("There was an error opening the file");
-
 } 
 
 

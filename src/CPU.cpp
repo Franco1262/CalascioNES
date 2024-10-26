@@ -172,8 +172,15 @@ void CPU::tick()
             fetch();
             finish = false;
         }
-        else if(n_cycles < Instr[opcode].cycles)    
+        else if(n_cycles < Instr[opcode].cycles)
+        {
             (this->*Instr[opcode].function)();
+            if(n_cycles == (Instr[opcode].cycles-1))
+            {
+                if(bus->get_nmi())
+                    NMI = true;
+            }
+        } 
         
         
         if(n_cycles == Instr[opcode].cycles)
@@ -183,8 +190,6 @@ void CPU::tick()
         }
     }
 
-    if(bus->get_nmi())
-        NMI = true;
 
     cycles++;
 }
@@ -199,9 +204,23 @@ void CPU::fetch()
     else
     {
         opcode = read(PC);
+        switch(opcode)
+        {
+            case 0x30:
+            case 0xD0:
+            case 0x10:
+            case 0x50:
+            case 0x70:
+            case 0x90:
+            case 0xB0:
+            case 0xF0:         
+                if(bus->get_nmi())
+                    NMI = true;
+                break;
+
+        }
         PC++;
     }
-
 
     n_cycles++;
 }
@@ -315,7 +334,7 @@ void CPU::ie_absxy(uint8_t reg)
     {
         absolute_addr |= ((uint16_t)read(PC) << 8);
         PC++;
-        n_cycles++;        
+        n_cycles++; 
     }
 
     else if constexpr(C == 3)
