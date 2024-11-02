@@ -4,10 +4,72 @@
 const int PRG_ROM_BANK_SIZE = 0x4000;
 const int CHR_ROM_BANK_SIZE = 0x2000;
 
-Cartridge::Cartridge(const char *filename) : mapper(nullptr)
+Cartridge::Cartridge() : mapper(nullptr)
+{
+
+} 
+
+
+Cartridge::~Cartridge() { }
+
+uint8_t Cartridge::ppu_reads(uint16_t address)
+{
+    uint8_t data;
+    if(n_chr_rom_banks == 0)
+        data = CHR_RAM[mapper->ppu_reads(address)];
+    else
+        data = CHR_ROM[mapper->ppu_reads(address)];
+
+    return data;
+}
+
+void Cartridge::ppu_writes(uint16_t address, uint8_t value)
+{
+    if(n_chr_rom_banks == 0)
+        CHR_RAM[mapper->ppu_reads(address)] = value;
+}
+
+uint8_t Cartridge::cpu_reads(uint16_t address)
+{
+    uint8_t data;
+    if(address >= 0x6000 && address < 0x8000)
+        data = PRG_RAM[mapper->cpu_reads(address)];
+
+
+    else if(address >= 0x8000 && address <= 0xFFFF)
+        data = PRG_ROM[mapper->cpu_reads(address)];
+    return data;
+}
+
+void Cartridge::cpu_writes(uint16_t address, uint8_t value)
+{
+    if(address >= 0x6000 && address < 0x8000)
+        PRG_RAM[mapper->cpu_reads(address)] = value;
+
+        //Ver esto luego
+    else if(address >= 0x8000 && address <= 0xFFFF)
+        mapper->cpu_writes(address, value);  
+}
+
+MIRROR Cartridge::getMirror()
+{
+    if (mapper_id == 1 || mapper_id == 7) 
+        mirror_mode = mapper->get_mirroring_mode();
+
+
+    return mirror_mode;
+}
+
+void Cartridge::new_instruction()
+{
+    mapper->new_instruction();
+}
+
+bool Cartridge::load_game(std::string filename)
 {
     std::ifstream file;
     file.open(filename, std::ios::binary | std::ios::in);
+    bool ok = false;
 
     if (file.is_open())
     {
@@ -55,11 +117,9 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
             chr_size = n_chr_rom_banks * CHR_ROM_BANK_SIZE;
         
 
-        if(n_chr_rom_banks != 0)
-        {   
-            CHR_ROM.reserve(chr_size);
+        if(n_chr_rom_banks != 0)  
             CHR_ROM.resize(chr_size);
-        }
+        
 
         else
         {   
@@ -69,11 +129,9 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
             else
                 chr_ram_size = 8192;
             
-            CHR_RAM.reserve(chr_ram_size);
             CHR_RAM.resize(chr_ram_size);     
         }
 
-        PRG_RAM.reserve(0x8000);
         PRG_RAM.resize(0x8000);
 
         //Reading PRG-ROM
@@ -139,65 +197,27 @@ Cartridge::Cartridge(const char *filename) : mapper(nullptr)
         {
             std::cerr << e.what() << '\n';
         }
+
+        ok = true;
         
     }
     else
+    {
+        ok = false;
         throw std::runtime_error("There was an error opening the file");
-} 
+    }
 
+    file.close();
 
-Cartridge::~Cartridge() { }
-
-uint8_t Cartridge::ppu_reads(uint16_t address)
-{
-    uint8_t data;
-
-    if(n_chr_rom_banks == 0)
-        data = CHR_RAM[mapper->ppu_reads(address)];
-    else
-        data = CHR_ROM[mapper->ppu_reads(address)];
-
-    return data;
+    return ok;
 }
 
-void Cartridge::ppu_writes(uint16_t address, uint8_t value)
+void Cartridge::soft_reset()
 {
-    if(n_chr_rom_banks == 0)
-        CHR_RAM[mapper->ppu_reads(address)] = value;
-}
-
-uint8_t Cartridge::cpu_reads(uint16_t address)
-{
-    uint8_t data;
-    if(address >= 0x6000 && address < 0x8000)
-        data = PRG_RAM[mapper->cpu_reads(address)];
-
-
-    else if(address >= 0x8000 && address <= 0xFFFF)
-        data = PRG_ROM[mapper->cpu_reads(address)];
-    return data;
-}
-
-void Cartridge::cpu_writes(uint16_t address, uint8_t value)
-{
-    if(address >= 0x6000 && address < 0x8000)
-        PRG_RAM[mapper->cpu_reads(address)] = value;
-
-        //Ver esto luego
-    else if(address >= 0x8000 && address <= 0xFFFF)
-        mapper->cpu_writes(address, value);  
-}
-
-MIRROR Cartridge::getMirror()
-{
-    if (mapper_id == 1 || mapper_id == 7) 
-        mirror_mode = mapper->get_mirroring_mode();
-
-
-    return mirror_mode;
-}
-
-void Cartridge::new_instruction()
-{
-    mapper->new_instruction();
+    CHR_RAM.clear();
+    PRG_RAM.clear();
+    CHR_ROM.clear();
+    PRG_ROM.clear();
+    mapper = nullptr;
+    header = Header{};
 }

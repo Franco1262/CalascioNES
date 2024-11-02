@@ -6,6 +6,7 @@ SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks
     n_write = 0;
     shift_register = 0x00;
     prg_rom_mode = 3;
+    chr_bank_0 = chr_bank_1 = prg_bank = 0;
     written_on_this_instruction = false;
 }
 
@@ -76,7 +77,6 @@ uint32_t SxROM::ppu_reads(uint16_t address)
         else
             mapped_addr = address & 0x1FFF;
     }
-        
     
     return mapped_addr;
 }

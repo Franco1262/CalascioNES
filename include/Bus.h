@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include "Mapper.h"
-#include "SDL2/SDL.h"
+#include "SDL.h"
 
 class PPU;
 class CPU;
@@ -29,6 +29,8 @@ class Bus
 
         void set_input(uint16_t state);
         bool get_input();
+
+        void soft_reset();
     private:
         std::shared_ptr<PPU> ppu;
         std::shared_ptr<Cartridge> cart;

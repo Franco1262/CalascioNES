@@ -157,7 +157,6 @@ void CPU::transfer_oam_bytes()
 void CPU::tick()
 {
     odd_cycle = !odd_cycle;
-
     if(reset_flag)
         reset();
 
@@ -3396,13 +3395,57 @@ void CPU::reset()
     }
 }
 
-void CPU::set_reset()
+void CPU::soft_reset()
 {
-    reset_flag = true;
+    // Reset cycle and logging-related variables
+    cycles = 0;
+    start_logging = false;
+
+    // Reset opcode
+    opcode = 0x00;
+
+    // Reset CPU registers
+    Accumulator = 0x00;
+    X = 0x00;
+    Y = 0x00;
+    PC = 0x0000;
+    SP = 0; // Stack pointer usually starts at 0xFF
+    P = 0;  // Default status register with unused and interrupt disable bits set
+
+    // Reset Direct Memory Access (DMA) related variables
+    OAMDMA = 0x00;
+    oamdma_flag = false;
     odd_cycle = false;
     cycles_dma = 0;
-    n_cycles = 0;
-    PC = 0x0000;
+    alignment_needed = false;
+    dma_read = 0x00;
+    dma_address = 0x0000;
+
+    // Reset interrupt and control flags
     reset_flag = true;
-    oamdma_flag = false;
+    NMI = false;
+
+    // Reset addressing and operation-related variables
+    jmp_address = 0x0000;
+    rel_address = 0x0000;
+    subroutine_address = 0x0000;
+    zero_page_addr = 0x0000;
+    absolute_addr = 0x0000;
+    effective_addr = 0x0000;
+    page_crossing = false;
+
+    // Reset cycle tracking variables
+    n_cycles = 0;
+    offset = 0x00;
+
+    // Reset temporary data variables
+    data = 0x00;
+    high_byte = 0x00;
+    low_byte = 0x00;
+    h = 0x0000;
+    l = 0x0000;
+
+    // Reset internal memory without altering its size
+    std::fill(std::begin(memory), std::end(memory), 0);
 }
+

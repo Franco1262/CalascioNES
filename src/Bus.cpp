@@ -172,3 +172,9 @@ void Bus::new_instruction()
 {
     cart->new_instruction();  
 }
+
+void Bus::soft_reset()
+{
+    NMI = false;
+    shift_register_controller1 = shift_register_controller2 = 0x0000;
+}

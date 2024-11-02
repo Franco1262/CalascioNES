@@ -13,7 +13,7 @@ class PPU;
 class Cartridge
 {
     public:
-        Cartridge(const char* filename);
+        Cartridge();
         ~Cartridge();
         uint8_t ppu_reads(uint16_t address);
         uint8_t cpu_reads(uint16_t address);
@@ -21,6 +21,9 @@ class Cartridge
         MIRROR getMirror();
         void cpu_writes(uint16_t address, uint8_t value);
         void new_instruction();
+
+        bool load_game(std::string filename);
+        void soft_reset();
        
     private:
         std::vector<uint8_t> CHR_ROM; 
@@ -32,7 +35,7 @@ class Cartridge
 
         struct Header
         {
-            uint8_t id_string[4];
+            uint8_t id_string[4] = {0};
             uint8_t prg_rom_lsb = 0x00;
             uint8_t chr_rom_lsb = 0x00;
             uint8_t flag6 = 0x00;
@@ -41,8 +44,8 @@ class Cartridge
             uint8_t prg_chr_rom_size = 0x00;
             uint8_t prg_ram_shift = 0x00;
             uint8_t chr_ram_shift = 0x00;
-            uint8_t ppu_type;
-            uint8_t misc[3]; //Unused for now
+            uint8_t ppu_type = 0;
+            uint8_t misc[3] = {0}; //Unused for now
         } header;
 
         uint16_t n_prg_rom_banks = 1;

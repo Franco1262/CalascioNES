@@ -4,11 +4,6 @@
 #include <fstream>
 #include <memory>
 #include "Logger.h"
-/* #include "nlohmann/json.hpp" */
-
-
-
-/* using json = nlohmann::json; */
 
 class Bus;
 class CPU
@@ -24,15 +19,15 @@ class CPU
         bool finish = false;
         bool compare(int line);
         void connect_bus(std::shared_ptr<Bus> bus);
-        void reset();
-        void set_reset();
         uint8_t get_opcode();
+
+        void reset();
+        void soft_reset();
 
     private:
 
         int cycles = 0;
         uint8_t opcode;
-/*         json json_data; */
         std::shared_ptr<Bus> bus;
         Logger logger;
         bool start_logging = false;
@@ -53,8 +48,22 @@ class CPU
         uint16_t dma_address;
         bool reset_flag;
         bool NMI = false;
+        uint16_t jmp_address;
+        uint16_t rel_address;
+        uint16_t subroutine_address = 0x0000;
+        uint16_t zero_page_addr = 0x0000;
+        uint16_t absolute_addr = 0x0000;
+        uint16_t effective_addr = 0x0000;
+        bool page_crossing = true;
+        uint8_t n_cycles = 0;
+        int8_t offset = 0x00;     
+        uint8_t data;
+        uint8_t high_byte;
+        uint8_t low_byte;
+        uint16_t h = 0x0000;
+        uint16_t l = 0x0000;
         
-        uint8_t memory[0x800]; //2kb ram internal to cpu
+        uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
 
 
         struct Instruction
@@ -158,23 +167,6 @@ class CPU
         void NOP();
         void XXX();
 
-        //Useful variables
-
-        //Jump address for JMP instruction
-        uint16_t jmp_address;
-        uint16_t rel_address;
-        uint16_t subroutine_address = 0x0000;
-        uint16_t zero_page_addr = 0x0000;
-        uint16_t absolute_addr = 0x0000;
-        uint16_t effective_addr = 0x0000;
-        bool page_crossing = true;
-        uint8_t n_cycles = 0;
-        int8_t offset = 0x00;     
-        uint8_t data;
-        uint8_t high_byte;
-        uint8_t low_byte;
-        uint16_t h = 0x0000;
-        uint16_t l = 0x0000;
 
         void fetch();
         void execute_instruction(int);

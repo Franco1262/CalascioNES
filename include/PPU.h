@@ -26,7 +26,7 @@ class PPU
         void cpu_writes(uint16_t address, uint8_t value); 
        
         void connect_bus(std::shared_ptr<Bus> bus);
-        void reset();
+        void soft_reset();
         
         uint32_t get_palette_color(uint8_t paletteFF, uint8_t pixel);
         std::vector<uint32_t>& get_screen();
@@ -70,7 +70,7 @@ class PPU
         Logger logger;
 
 
-        uint8_t nametable[0x0800]; //VRAM 2kb
+        uint8_t nametable[0x0800] = {0}; //VRAM 2kb
         const uint32_t system_palette[64] = {
                     0x666666FF, 0x002a88FF, 0x1412a7FF, 0x3b00a4FF, 0x5c007eFF, 0x6e0040FF, 0x6c0600FF, 0x561d00FF,
                     0x333500FF, 0x0b4800FF, 0x005200FF, 0x004f08FF, 0x00404dFF, 0x000000FF, 0x000000FF, 0x000000FF,
@@ -82,10 +82,10 @@ class PPU
                     0xe4e594FF, 0xcfef96FF, 0xbdf4abFF, 0xb3f3ccFF, 0xb5ebf2FF, 0xb8b8b8FF, 0x000000FF, 0x000000FF,
                 };
 
-        uint8_t frame_palette[0x20];       
-        uint8_t OAM[0x100]; //256 bytes that determines how sprites are rendered
-        uint8_t secondary_oam[0x20];
-        uint8_t scanline_sprite_buffer[0x30];
+        uint8_t frame_palette[0x20] = {0};       
+        uint8_t OAM[0x100] = {0}; //256 bytes that determines how sprites are rendered
+        uint8_t secondary_oam[0x20] = {0};
+        uint8_t scanline_sprite_buffer[0x30] = {0};
 
 
         //PPU internal registers
@@ -126,7 +126,6 @@ class PPU
         std::vector<uint32_t> nametable_buffer;
         std::vector<uint32_t> sprite_buffer;
            
-        bool frame_complete;
         int n; // variable for OAM fetching
         int m;
 

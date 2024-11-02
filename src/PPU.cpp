@@ -208,7 +208,9 @@ uint8_t PPU::read(uint16_t address)
     address = address & 0x3FFF;
     
     if((address >= 0x0000) && (address < 0x2000))
+    {
         data = bus->ppu_reads(address);
+    }
 
     else if((address >= 0x2000) && (address < 0x3F00))
     {
@@ -318,17 +320,91 @@ std::vector<uint32_t>& PPU::get_screen()
     return screen;
 }
 
-void PPU::reset()
+void PPU::soft_reset()
 {
-    PPUADDR = PPUCTRL = PPUDATA = PPUMASK = PPUSCROLL = PPUSTATUS = 0x00;
+    // Reset PPU registers
+    PPUCTRL = 0x00;
+    PPUMASK = 0x00;
+    PPUSTATUS = 0x00;
+    OAMADDR = 0x00;
+    OAMDATA = 0x00;
+    PPUSCROLL = 0x00;
+    PPUADDR = 0x00;
+    PPUDATA = 0x00;
+    OAMDMA = 0x00;
+
+    // Reset VRAM, OAM, and secondary OAM
+    std::fill(std::begin(nametable), std::end(nametable), 0);
+    std::fill(std::begin(frame_palette), std::end(frame_palette), 0);
+    std::fill(std::begin(OAM), std::end(OAM), 0);
+    std::fill(std::begin(secondary_oam), std::end(secondary_oam), 0);
+    std::fill(std::begin(scanline_sprite_buffer), std::end(scanline_sprite_buffer), 0);
+
+    // Reset internal registers
+    v = 0x0000;
+    t = 0x0000;
+    fine_x = 0;
+    w = false;
     odd = false;
+
+    // Reset rendering and sprite evaluation states
+    cycles = 0;
+    scanline = 0;
     frame = false;
+
+    nametable_id = 0;
+    attribute = 0;
+    attribute_next_tile = 0;
+    attribute_current_tile = 0;
+    bg_lsb = 0;
+    bg_msb = 0;
+    bg_shift_register = 0;
+    bg_shift_register1 = 0;
+    palette_bit_0 = 0;
+    palette_bit_1 = 0;
+    coarse_x_bit1 = 0;
+    coarse_y_bit1 = 0;
+    ppudata_read_buffer = 0;
+
+    // Clear screen buffers
+    std::fill(screen.begin(), screen.end(), 0);
+    std::fill(scanline_buffer.begin(), scanline_buffer.end(), 0);
+    std::fill(pattern_buffer.begin(), pattern_buffer.end(), 0);
+    std::fill(nametable_buffer.begin(), nametable_buffer.end(), 0);
+    std::fill(sprite_buffer.begin(), sprite_buffer.end(), 0);
+
+    // Reset sprite evaluation variables
+    n = 0;
+    m = 0;
+    oam_data = 0;
+    y_coord = 0;
+    oam_writes = false;
+    secondary_oam_pos = 0;
+    sprites_found = 0;
+    overflow_n = false;
+    in_range = false;
     j = 0;
     i = 0;
-    w = false;
-    scanline = cycles = 0;
-    tick();
+    byte = 0;
+
+    // Reset rendering flags
+    is_rendering_enabled = false;
+
+    // Reset sprite 0 hit handling
+    sprite_0_next_scanline = false;
+    sprite_0_current_scanline = false;
+    sprite_y_coord = 0;
+    attribute_sprite = 0;
+    tile_id = 0;
+    address = 0;
+    pre_render_scanline = 261;
+
+    // Reset timing and open bus states
+    ppu_timing = false;
+    open_bus = 0;
+    supress = false;
 }
+
 
 uint32_t PPU::get_palette_color(uint8_t palette_x, uint8_t pixel)
 {
@@ -798,7 +874,6 @@ inline bool is_rendering_background(int cycles)
 
 void PPU::tick()
 {
-    
     is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
     scanline_type = get_scanline_type();
 
@@ -926,7 +1001,7 @@ void PPU::tick()
 
         if( is_rendering_enabled && (scanline != pre_render_scanline) && ((cycles > 64) && ( cycles < 257)))
             sprite_evaluation(); 
-        
+       
         if(  (PPUMASK & 0x10)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
             draw_sprite_pixel();
 

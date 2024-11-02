@@ -2,10 +2,12 @@
 ROMS/
 SDL2-2.30.6/
 TESTS/
-TODO.txt
+*.txt
 json/
-main.exe
 *.nes
 *.dll
 SDL2-2.30.7/
 nes-test-roms
+ImGuiFileDialog
+*.exe
+imgui
