@@ -6,6 +6,7 @@
 #include "Cartridge.h"
 #include "Bus.h"
 #include "nfd.h"
+#include <filesystem>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
@@ -29,7 +30,7 @@ class SDL_manager
             }
 
             // Create the window
-            window = SDL_CreateWindow("NES", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+            window = SDL_CreateWindow("CalascioNES", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
             if (!window)
             {
                 std::cerr << "Failed to open " << SCREEN_WIDTH << " x " << SCREEN_HEIGHT << " window: " << SDL_GetError() << std::endl;
@@ -82,10 +83,13 @@ class NES
 
         void load_game(std::string filename)
         {
-            old_game_filename = filename;
-            reset();
-            cart->load_game(filename);
-            game_loaded = true;
+            if(std::filesystem::path(filename).extension().string() == ".nes")
+            {
+                old_game_filename = filename;           
+                reset();
+                cart->load_game(filename);
+                game_loaded = true;
+            }
         }
 
         void run_frame()
@@ -165,14 +169,14 @@ class NES
 //SDL2
 void create_textures(SDL_Renderer* renderer);
 void destroy_textures();
-void handle_events(NES* nes, bool& running, SDL_Renderer* renderer);
+void handle_events(NES* nes, bool& running, SDL_manager* manager);
 //ImGUI
 void initImGui(SDL_Window* window, SDL_Renderer* renderer);
 void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer);
 void cleanupImGui();
 //Functions to draw
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
-void draw_pattern_table(std::shared_ptr<PPU> ppu, SDL_Renderer*);
+void draw_pattern_table(std::shared_ptr<PPU> ppu);
 
 
 SDL_Texture* screenBuffer;
@@ -181,6 +185,15 @@ SDL_Texture* nametableBuffer1;
 SDL_Texture* spriteBuffer;
 SDL_Texture* patternBuffer0;
 SDL_Texture* patternBuffer1;
+
+SDL_Window* nametable_window;
+SDL_Renderer* nametable_renderer;
+
+SDL_Window* pattern_window;
+SDL_Renderer* pattern_renderer;
+
+SDL_Window* sprite_window;
+SDL_Renderer* sprite_renderer;
 
 int padding;
 
@@ -200,12 +213,11 @@ int main(int argc, char *argv[])
 
     padding = ImGui::GetFrameHeight();
     SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
-
-    create_textures(manager.get_renderer());
+    screenBuffer = SDL_CreateTexture(manager.get_renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
     while (running) 
     {
-        handle_events(&nes, running, manager.get_renderer());
+        handle_events(&nes, running, &manager);
         ImGui_ImplSDLRenderer2_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();  
@@ -216,13 +228,19 @@ int main(int argc, char *argv[])
         {
             nes.run_frame();
             draw_frame(nes.get_ppu(), manager.get_renderer());
+            //draw_pattern_table(nes.get_ppu());
         }
-
         handle_imGui(&nes, running, manager.get_renderer());
         SDL_RenderPresent(manager.get_renderer());
     }
 
     cleanupImGui();
+    SDL_DestroyRenderer(nametable_renderer);
+    SDL_DestroyRenderer(pattern_renderer);
+    SDL_DestroyRenderer(sprite_renderer);
+    SDL_DestroyWindow(nametable_window);
+    SDL_DestroyWindow(pattern_window);
+    SDL_DestroyWindow(sprite_window);
     destroy_textures();
 
     return 0;
@@ -230,56 +248,55 @@ int main(int argc, char *argv[])
 
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
 {
-    // Retrieve pixel data from PPU
-/*     std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
-    std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
-    std::vector<uint32_t> sprites = ppu->get_sprite();  */
+     
+    //Screen
     std::vector<uint32_t> screen = ppu->get_screen();
-
-    // Define texture rendering positions
-    SDL_Rect screen_rect = {0, padding , 256 * SCALE, 240 * SCALE};
-/*     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
-    SDL_Rect nametable_rect1 = {256 * SCALE, 240, 256, 240};
-    SDL_Rect sprite_rect = {256 * SCALE, 480, 256, 240}; */
-
-    // Update textures
+    SDL_Rect screen_rect = {0, padding , SCREEN_WIDTH, SCREEN_HEIGHT};
     SDL_UpdateTexture(screenBuffer, NULL, screen.data(), 256 * 4);
-/*     SDL_UpdateTexture(nametableBuffer0, NULL, nametable0.data(), 256 * 4);
-    SDL_UpdateTexture(nametableBuffer1, NULL, nametable1.data(), 256 * 4);
-    SDL_UpdateTexture(spriteBuffer, NULL, sprites.data(), 64 * 4); */
-
     SDL_RenderCopy(renderer, screenBuffer, NULL, &screen_rect);
-/*     SDL_RenderCopy(renderer, nametableBuffer0, NULL, &nametable_rect);
-    SDL_RenderCopy(renderer, nametableBuffer1, NULL, &nametable_rect1);
-    SDL_RenderCopy(renderer, spriteBuffer, NULL, &sprite_rect); */
+
+    //Nametable Viewer
+    if(nametable_window != nullptr)
+    {
+        std::vector<uint32_t> nametable0 = ppu->get_nametable(0); 
+        std::vector<uint32_t> nametable1 = ppu->get_nametable(1);
+        SDL_Rect nametable_rect = {0, 0, 256, 240};
+        SDL_Rect nametable_rect1 = {256, 0, 256, 240};
+        SDL_UpdateTexture(nametableBuffer0, NULL, nametable0.data(), 256 * 4);
+        SDL_UpdateTexture(nametableBuffer1, NULL, nametable1.data(), 256 * 4);
+        SDL_RenderCopy(nametable_renderer, nametableBuffer0, NULL, &nametable_rect);
+        SDL_RenderCopy(nametable_renderer, nametableBuffer1, NULL, &nametable_rect1);
+        SDL_RenderPresent(nametable_renderer);
+    }
+
+    if(sprite_window != nullptr)
+    {
+        std::vector<uint32_t> sprites = ppu->get_sprite();
+        SDL_Rect sprite_rect = {0, 0, 256, 240};
+        SDL_UpdateTexture(spriteBuffer, NULL, sprites.data(), 64 * 4);
+        SDL_RenderCopy(sprite_renderer, spriteBuffer, NULL, &sprite_rect);
+        SDL_RenderPresent(sprite_renderer);
+    }
 }
 
-void draw_pattern_table(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
+void draw_pattern_table(std::shared_ptr<PPU> ppu)
 {
-    std::vector<uint32_t> pattern0 = ppu->get_pattern_table(0);
-    std::vector<uint32_t> pattern1 = ppu->get_pattern_table(1);
+    if(pattern_window != nullptr)
+    {
+        std::vector<uint32_t> pattern0 = ppu->get_pattern_table(0);
+        std::vector<uint32_t> pattern1 = ppu->get_pattern_table(1);
+        //Pattern table texture
+        static SDL_Rect pattern_rect0 = {0, 0, 256, 240};
+        static SDL_Rect pattern_rect1 = {256, 0, 256, 240};
+
+        SDL_UpdateTexture(patternBuffer0, NULL, pattern0.data(), 128 * sizeof(uint32_t));
+        SDL_RenderCopy(pattern_renderer, patternBuffer0, NULL, &pattern_rect0); 
 
 
-    //Pattern table texture
-    static SDL_Rect pattern_rect0 = {(256 * SCALE) + 256, 0, 256, 240};
-    static SDL_Rect pattern_rect1 = {(256 * SCALE) + 256, 240, 256, 240};
-
-    SDL_UpdateTexture(patternBuffer0, NULL, pattern0.data(), 128 * sizeof(uint32_t));
-    SDL_RenderCopy(renderer, patternBuffer0, NULL, &pattern_rect0); 
-
-
-    SDL_UpdateTexture(patternBuffer1, NULL, pattern1.data(), 128 * sizeof(uint32_t));
-    SDL_RenderCopy(renderer, patternBuffer1, NULL, &pattern_rect1); 
-}
-
-void create_textures(SDL_Renderer* renderer)
-{
-    screenBuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
-    nametableBuffer0 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
-    nametableBuffer1 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
-    spriteBuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 64);
-    patternBuffer0 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
-    patternBuffer1 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+        SDL_UpdateTexture(patternBuffer1, NULL, pattern1.data(), 128 * sizeof(uint32_t));
+        SDL_RenderCopy(pattern_renderer, patternBuffer1, NULL, &pattern_rect1);
+        SDL_RenderPresent(pattern_renderer);
+    }
 }
 
 void destroy_textures()
@@ -292,45 +309,79 @@ void destroy_textures()
     SDL_DestroyTexture(patternBuffer1);  
 }
 
-void handle_events(NES* nes, bool& running, SDL_Renderer* renderer)
+void handle_events(NES* nes, bool& running, SDL_manager* manager)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event)) 
     {
         ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT) 
-            running = false;
+
+        if (event.type == SDL_WINDOWEVENT)
+        {
+            if (event.window.event == SDL_WINDOWEVENT_CLOSE)
+            {
+                // Check if it's the nametable window
+                if (event.window.windowID == SDL_GetWindowID(nametable_window))
+                {
+                    // Clean up resources
+                    SDL_DestroyRenderer(nametable_renderer);
+                    SDL_DestroyWindow(nametable_window);
+                    nametable_window = nullptr; // Set to nullptr after destruction
+                    nametable_renderer = nullptr; // Set to nullptr after destruction
+                }
+                // Check if it's the main window
+                else if (event.window.windowID == SDL_GetWindowID(manager->get_window()))
+                {
+                    running = false; // Exit the main loop
+                }
+
+                else if(event.window.windowID == SDL_GetWindowID(pattern_window))
+                {
+                    SDL_DestroyRenderer(pattern_renderer);
+                    SDL_DestroyWindow(pattern_window);
+                    pattern_window = nullptr;
+                    pattern_renderer = nullptr;
+                }
+
+                else if(event.window.windowID == SDL_GetWindowID(sprite_window))
+                {
+                    SDL_DestroyRenderer(sprite_renderer);
+                    SDL_DestroyWindow(sprite_window);
+                    sprite_window = nullptr;
+                    sprite_renderer = nullptr;
+                }
+            }
+        }
         else if (event.type == SDL_KEYDOWN)
         {
             switch(event.key.keysym.scancode)
             {
                 case SDL_SCANCODE_P:
-                        if(nes->is_game_loaded())
-                            nes->change_pause();
-                        break;
+                    if (nes->is_game_loaded())
+                        nes->change_pause();
+                    break;
 
                 case SDL_SCANCODE_ESCAPE:
-                    running = false;
+                    running = false; // Exit the main loop
                     break;
 
                 case SDL_SCANCODE_O:
-                    if(nes->is_game_loaded())
+                    if (nes->is_game_loaded())
                         nes->change_timing();
                     break;
 
                 default: break;
             }
         }
-
         else if(event.type == SDL_DROPFILE)
         {
             std::string filename(event.drop.file);
             nes->load_game(filename);
             SDL_free(event.drop.file);
         }
-
     }   
 }
+
 
 void initImGui(SDL_Window* window, SDL_Renderer* renderer) 
 {
@@ -390,8 +441,47 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
             }
             ImGui::EndMenu();
         }
+
+        if(ImGui::BeginMenu("Debug"))
+        {
+            if(ImGui::MenuItem("Nametable viewer"))
+            {
+                if(nametable_window == nullptr)
+                {
+                    nametable_window = SDL_CreateWindow("Nametable viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
+                    nametable_renderer = SDL_CreateRenderer(nametable_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    nametableBuffer0 = SDL_CreateTexture(nametable_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+                    nametableBuffer1 = SDL_CreateTexture(nametable_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+                }
+            }
+
+            if(ImGui::MenuItem("Pattern table viewer"))
+            {
+                if(pattern_window == nullptr)
+                {
+                    pattern_window = SDL_CreateWindow("Pattern table viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
+                    pattern_renderer = SDL_CreateRenderer(pattern_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    patternBuffer0 = SDL_CreateTexture(pattern_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+                    patternBuffer1 = SDL_CreateTexture(pattern_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+                    draw_pattern_table(nes->get_ppu());
+                }
+            }
+
+            if(ImGui::MenuItem("Sprite viewer"))
+            {
+                if(sprite_window == nullptr)
+                {
+                    sprite_window = SDL_CreateWindow("Sprite viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 256, 240, 0);
+                    sprite_renderer = SDL_CreateRenderer(sprite_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    spriteBuffer = SDL_CreateTexture(sprite_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 64);
+                }
+            }
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMainMenuBar();
     } 
+
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 }
