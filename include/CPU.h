@@ -3,7 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <memory>
-#include "Logger.h"
+//#include "Logger.h"
 
 class Bus;
 class CPU
@@ -29,7 +29,7 @@ class CPU
         int cycles = 0;
         uint8_t opcode;
         std::shared_ptr<Bus> bus;
-        Logger logger;
+        //Logger logger;
         bool start_logging = false;
         //Registers
         uint8_t Accumulator;

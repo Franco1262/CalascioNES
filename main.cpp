@@ -5,15 +5,15 @@
 #include "PPU.h"
 #include "Cartridge.h"
 #include "Bus.h"
-#include "Logger.h"
+#include "nfd.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 
-const int SCREEN_WIDTH = 256;
-const int SCREEN_HEIGHT = 240;
 const int SCALE = 3;
+const int SCREEN_WIDTH = 256 * SCALE;
+const int SCREEN_HEIGHT = 240 * SCALE;
 
 class SDL_manager
 {
@@ -29,10 +29,10 @@ class SDL_manager
             }
 
             // Create the window
-            window = SDL_CreateWindow("NES", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (SCREEN_WIDTH * SCALE), SCREEN_HEIGHT * SCALE, 0);
+            window = SDL_CreateWindow("NES", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
             if (!window)
             {
-                std::cerr << "Failed to open " << (SCREEN_WIDTH * SCALE) << " x " << (SCREEN_HEIGHT * SCALE) << " window: " << SDL_GetError() << std::endl;
+                std::cerr << "Failed to open " << SCREEN_WIDTH << " x " << SCREEN_HEIGHT << " window: " << SDL_GetError() << std::endl;
                 exit(1);
             }
 
@@ -82,6 +82,8 @@ class NES
 
         void load_game(std::string filename)
         {
+            old_game_filename = filename;
+            reset();
             cart->load_game(filename);
             game_loaded = true;
         }
@@ -139,6 +141,12 @@ class NES
             ppu_accumulator = 0;
         }
 
+        void reload_game()
+        {
+            reset();
+            load_game(old_game_filename);
+        }
+
     private:
         std::shared_ptr<CPU> cpu;
         std::shared_ptr<PPU> ppu;
@@ -148,7 +156,8 @@ class NES
         float ppu_accumulator = 0.0;
         float PPU_TIMING = 3;
         bool pause = false;
-        bool game_loaded;
+        bool game_loaded = false;
+        std::string old_game_filename;
 
 };
 
@@ -159,10 +168,12 @@ void destroy_textures();
 void handle_events(NES* nes, bool& running, SDL_Renderer* renderer);
 //ImGUI
 void initImGui(SDL_Window* window, SDL_Renderer* renderer);
+void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer);
 void cleanupImGui();
 //Functions to draw
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
 void draw_pattern_table(std::shared_ptr<PPU> ppu, SDL_Renderer*);
+
 
 SDL_Texture* screenBuffer;
 SDL_Texture* nametableBuffer0;
@@ -170,6 +181,8 @@ SDL_Texture* nametableBuffer1;
 SDL_Texture* spriteBuffer;
 SDL_Texture* patternBuffer0;
 SDL_Texture* patternBuffer1;
+
+int padding;
 
 int main(int argc, char *argv[])
 {
@@ -185,6 +198,9 @@ int main(int argc, char *argv[])
 
     initImGui(manager.get_window(), manager.get_renderer());
 
+    padding = ImGui::GetFrameHeight();
+    SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
+
     create_textures(manager.get_renderer());
 
     while (running) 
@@ -192,7 +208,9 @@ int main(int argc, char *argv[])
         handle_events(&nes, running, manager.get_renderer());
         ImGui_ImplSDLRenderer2_NewFrame();
         ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+        ImGui::NewFrame();  
+        SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255); // Clear to black
+        SDL_RenderClear(manager.get_renderer());
 
         if(nes.is_game_loaded())
         {
@@ -200,8 +218,7 @@ int main(int argc, char *argv[])
             draw_frame(nes.get_ppu(), manager.get_renderer());
         }
 
-        ImGui::Render();
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), manager.get_renderer());
+        handle_imGui(&nes, running, manager.get_renderer());
         SDL_RenderPresent(manager.get_renderer());
     }
 
@@ -220,7 +237,7 @@ void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
     std::vector<uint32_t> screen = ppu->get_screen();
 
     // Define texture rendering positions
-    SDL_Rect screen_rect = {0, 0, 256 * SCALE, 240 * SCALE};
+    SDL_Rect screen_rect = {0, padding , 256 * SCALE, 240 * SCALE};
 /*     SDL_Rect nametable_rect = {256 * SCALE, 0, 256, 240};
     SDL_Rect nametable_rect1 = {256 * SCALE, 240, 256, 240};
     SDL_Rect sprite_rect = {256 * SCALE, 480, 256, 240}; */
@@ -280,6 +297,7 @@ void handle_events(NES* nes, bool& running, SDL_Renderer* renderer)
     SDL_Event event;
     while (SDL_PollEvent(&event)) 
     {
+        ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT) 
             running = false;
         else if (event.type == SDL_KEYDOWN)
@@ -287,7 +305,8 @@ void handle_events(NES* nes, bool& running, SDL_Renderer* renderer)
             switch(event.key.keysym.scancode)
             {
                 case SDL_SCANCODE_P:
-                        nes->change_pause();
+                        if(nes->is_game_loaded())
+                            nes->change_pause();
                         break;
 
                 case SDL_SCANCODE_ESCAPE:
@@ -295,7 +314,8 @@ void handle_events(NES* nes, bool& running, SDL_Renderer* renderer)
                     break;
 
                 case SDL_SCANCODE_O:
-                    nes->change_timing();
+                    if(nes->is_game_loaded())
+                        nes->change_timing();
                     break;
 
                 default: break;
@@ -305,23 +325,73 @@ void handle_events(NES* nes, bool& running, SDL_Renderer* renderer)
         else if(event.type == SDL_DROPFILE)
         {
             std::string filename(event.drop.file);
-            nes->reset();
             nes->load_game(filename);
             SDL_free(event.drop.file);
         }
+
     }   
 }
 
-void initImGui(SDL_Window* window, SDL_Renderer* renderer) {
+void initImGui(SDL_Window* window, SDL_Renderer* renderer) 
+{
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsLight();
 }
 
-void cleanupImGui() {
+void cleanupImGui() 
+{
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
+}
+
+void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
+{
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open")) 
+            {
+                nfdchar_t *outPath = NULL;
+                nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
+                    
+                if ( result == NFD_OKAY ) {
+                    nes->load_game(outPath);
+                    free(outPath);
+                }     
+            }
+            if (ImGui::MenuItem("Exit", "Esc")) 
+            {
+                running = false;
+            }
+            ImGui::EndMenu();
+        }
+
+        if(ImGui::BeginMenu("Game"))
+        {
+            if(ImGui::MenuItem("Pause","P"))
+            {
+                if(nes->is_game_loaded())
+                    nes->change_pause();
+            }
+
+            if(ImGui::MenuItem("Reset"))
+            {
+                if(nes->is_game_loaded())
+                    nes->reload_game();
+            }
+
+            if(ImGui::MenuItem("Alternate region (NTSC/PAL)", "O"))
+            {
+                if(nes->is_game_loaded())
+                    nes->change_timing();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    } 
+    ImGui::Render();
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 }

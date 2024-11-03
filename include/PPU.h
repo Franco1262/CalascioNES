@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include "Logger.h"
+//#include "Logger.h"
 
 enum ScanlineType
 {
@@ -67,7 +67,7 @@ class PPU
 
         std::shared_ptr<Bus> bus;
 
-        Logger logger;
+        //Logger logger;
 
 
         uint8_t nametable[0x0800] = {0}; //VRAM 2kb

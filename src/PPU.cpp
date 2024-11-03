@@ -7,7 +7,7 @@
 
 #define IS_PPUMASK_SET(mask) (((mask) & 0x10) || ((mask) & 0x8))
 
-PPU::PPU() : logger("PPULOG.txt"),w(false) ,cycles(0), scanline(0)
+PPU::PPU() : w(false) ,cycles(0), scanline(0)
 {
     odd = false;
     frame = false;
