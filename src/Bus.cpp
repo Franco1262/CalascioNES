@@ -103,10 +103,10 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
                 }
 
                 // Second controller's button mappings
-                if (keystate[SDL_SCANCODE_S])  state |= 1 << 8;  // A button
-                if (keystate[SDL_SCANCODE_A])  state |= 1 << 9;  // B button
-                if (keystate[SDL_SCANCODE_W])  state |= 1 << 10; // Select
-                if (keystate[SDL_SCANCODE_E])  state |= 1 << 11; // Start
+                if (keystate[SDL_SCANCODE_Y])  state |= 1 << 8;  // A button
+                if (keystate[SDL_SCANCODE_T])  state |= 1 << 9;  // B button
+                if (keystate[SDL_SCANCODE_G])  state |= 1 << 10; // Select
+                if (keystate[SDL_SCANCODE_H])  state |= 1 << 11; // Start
 
                 // Up and Down for the second controller
                 if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up

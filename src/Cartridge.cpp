@@ -65,152 +65,91 @@ void Cartridge::new_instruction()
     mapper->new_instruction();
 }
 
-bool Cartridge::load_game(std::string filename)
+bool Cartridge::load_game(const std::string filename)
 {
-    std::ifstream file;
-    file.open(filename, std::ios::binary | std::ios::in);
-    bool ok = false;
-
-    if (file.is_open())
+    std::ifstream file(filename, std::ios::binary | std::ios::in);
+    if (!file.is_open())
     {
-        //Read header
-        if(!file.read(reinterpret_cast<char*> (&header), sizeof(header)))
-            throw std::runtime_error("There was a problem reading the header" + (std::string)filename);
+        std::cerr << "Error: Could not open file " << filename << std::endl;
+        return false;
+    }
 
-        //Check for format
-        bool iNESFormat=false;
-        if (header.id_string[0]=='N' && header.id_string[1]=='E' && header.id_string[2]=='S' && header.id_string[3]==0x1A)
-                iNESFormat=true;
+    try
+    {
+        // Read header
+        if (!file.read(reinterpret_cast<char*>(&header), sizeof(header)))
+        {
+            std::cerr << "Error: Failed to read header in " << filename << std::endl;
+            return false;
+        }
 
+        // Check format
+        bool iNESFormat = (header.id_string[0] == 'N' && header.id_string[1] == 'E' && header.id_string[2] == 'S' && header.id_string[3] == 0x1A);
+        bool NES20Format = (iNESFormat && (header.flag7 & 0x0C) == 0x08);
 
-        bool NES20Format=false;
-        if (iNESFormat==true && (header.flag7 & 0x0C) ==0x08)
-                NES20Format=true;
-
-
-        //Reading the mirror mode of the cartridge
+        // Set mirror mode and ROM bank counts
         mirror_mode = static_cast<MIRROR>(header.flag6 & 0x01);
-        //Number of prg and chr banks
         n_prg_rom_banks = (header.prg_rom_lsb | ((header.prg_chr_rom_size & 0x0F) << 8)) & 0xFFF;
         n_chr_rom_banks = (header.chr_rom_lsb | ((header.prg_chr_rom_size & 0xF0) << 8)) & 0xFFF;
 
-        //If trainer, ignore it
-        if(header.flag6 & 0x4)
+        // Ignore trainer if present
+        if (header.flag6 & 0x4)
             file.ignore(512);
-        
-        
-        //Reserving memory for the PRG-ROM 
-        PRG_ROM.reserve(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
+
+        // Allocate memory for PRG and CHR ROM
         PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
-        //Reserving memory for the CHR-ROM
-        uint32_t chr_size;
-
-        if ( (n_chr_rom_banks & 0xF00) == 0xF00 )
-        {
-            // Exponent-multiplier notation
-            std::cout << " Multiplier notation " << std::endl;
-            uint8_t exponent = (header.prg_chr_rom_size & 0x0F);
-            uint8_t multiplier = (header.chr_rom_lsb & 0x03);
-            chr_size = (1 << exponent) * (multiplier * 2 + 1);
-        } 
-        else 
-            chr_size = n_chr_rom_banks * CHR_ROM_BANK_SIZE;
+        uint32_t chr_size = (n_chr_rom_banks & 0xF00) == 0xF00
+            ? (1 << (header.prg_chr_rom_size & 0x0F)) * ((header.chr_rom_lsb & 0x03) * 2 + 1)
+            : n_chr_rom_banks * CHR_ROM_BANK_SIZE;
         
-
-        if(n_chr_rom_banks != 0)  
+        if (n_chr_rom_banks > 0)
             CHR_ROM.resize(chr_size);
-        
-
         else
-        {   
-            int chr_ram_size;
-            if(NES20Format)
-                chr_ram_size = 64 << (header.chr_ram_shift & 0x0F);
-            else
-                chr_ram_size = 8192;
-            
-            CHR_RAM.resize(chr_ram_size);     
-        }
+            CHR_RAM.resize(NES20Format ? (64 << (header.chr_ram_shift & 0x0F)) : 8192);
 
         PRG_RAM.resize(0x8000);
 
-        //Reading PRG-ROM
-        try
+        // Read PRG-ROM
+        if (!file.read(reinterpret_cast<char*>(PRG_ROM.data()), PRG_ROM.size()))
         {
-            if(!file.read(reinterpret_cast<char*> (PRG_ROM.data()), n_prg_rom_banks * 0x4000))
-                throw std::runtime_error("There was a problem reading PRG-ROM");
+            std::cerr << "Error: Failed to read PRG-ROM in " << filename << std::endl;
+            return false;
         }
-        catch(const std::exception& e)
+
+        // Read CHR-ROM
+        if (n_chr_rom_banks > 0)
         {
-            std::cerr << e.what() << '\n';
-        }
-    
-        //Reading CHR-ROM
-        try
-        {
-            if(n_chr_rom_banks != 0)
+            if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), chr_size))
             {
-                std::streampos currentPos = file.tellg();
-
-                // Seek to the end of the file
-                file.seekg(0, std::ios::end);
-                
-                // Get the total size of the file
-                std::streampos endPos = file.tellg();
-
-                // Return to the original position
-                file.seekg(currentPos);
-
-                // Calculate the number of bytes remaining
-                std::streampos bytes_to_read = endPos - currentPos;
-                if(!file.read(reinterpret_cast<char*> (CHR_ROM.data()), bytes_to_read))
-                    throw std::runtime_error("There was a problem reading CHR-ROM");
+                std::cerr << "Error: Failed to read CHR-ROM in " << filename << std::endl;
+                return false;
             }
         }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-            if (file.gcount() < chr_size) 
-            {
-                std::cout << "Only read " << file.gcount() << " bytes, expected " << chr_size << std::endl;
-                file.read(reinterpret_cast<char*> (CHR_ROM.data()), file.gcount());
-            }  
-        }
 
-        //Calculating mapper_id
- 
+        // Calculate mapper ID and initialize mapper
         mapper_id = (((header.flag6 & 0xF0) >> 4) | (header.flag7 & 0xF0) | ((header.mapper & 0x0F) << 8));
-
-        try
+        switch (mapper_id)
         {
-            switch(mapper_id)
-            {
-                case 0: { mapper = std::make_unique<NROM> (n_prg_rom_banks, n_chr_rom_banks); break; }
-                case 2: { mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-                case 3: { mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-                case 1: { mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }
-                case 7: { mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break; }     
-                default: {throw std::runtime_error("Unsupported mapper"); break;}
-            }
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
+            case 0: mapper = std::make_unique<NROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            case 2: mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            case 3: mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            case 1: mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            case 7: mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            default:
+                std::cerr << "Error: Unsupported mapper ID " << mapper_id << std::endl;
+                return false;
         }
 
-        ok = true;
-        
     }
-    else
+    catch (const std::exception& e)
     {
-        ok = false;
-        throw std::runtime_error("There was an error opening the file");
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return false;
     }
 
-    file.close();
-
-    return ok;
+    return true;
 }
+
 
 void Cartridge::soft_reset()
 {

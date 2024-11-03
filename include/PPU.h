@@ -34,7 +34,10 @@ class PPU
         std::vector<uint32_t> get_nametable(int);
         std::vector<uint32_t> get_sprite();
 
-        unsigned long get_frame();
+        inline bool get_frame()
+        {
+            return frame;
+        }
 
         void increment_hori_v();
         void increment_vert_v();

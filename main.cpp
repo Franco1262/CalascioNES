@@ -12,9 +12,9 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 
-const int SCALE = 3;
-const int SCREEN_WIDTH = 256 * SCALE;
-const int SCREEN_HEIGHT = 240 * SCALE;
+constexpr int SCALE = 3;
+constexpr int SCREEN_WIDTH = 256 * SCALE;
+constexpr int SCREEN_HEIGHT = 240 * SCALE;
 
 class SDL_manager
 {
@@ -51,12 +51,12 @@ class SDL_manager
             SDL_DestroyWindow(window);
         }
 
-        SDL_Renderer* get_renderer()
+        inline SDL_Renderer* get_renderer()
         {
             return renderer;
         }
 
-        SDL_Window* get_window()
+        inline SDL_Window* get_window()
         {
             return window;
         }
@@ -81,15 +81,17 @@ class NES
             ppu->connect_bus(bus);
         }
 
-        void load_game(std::string filename)
+        bool load_game(std::string filename)
         {
             if(std::filesystem::path(filename).extension().string() == ".nes")
             {
                 old_game_filename = filename;           
                 reset();
-                cart->load_game(filename);
-                game_loaded = true;
+                if(cart->load_game(filename))
+                    game_loaded = true;
             }
+
+            return game_loaded;
         }
 
         void run_frame()
@@ -107,12 +109,12 @@ class NES
             }      
         }
 
-        void change_pause()
+        inline void change_pause()
         {
             pause = !pause;
         }
 
-        void change_timing()
+        inline void change_timing()
         {
             if(PPU_TIMING == 3)
             {
@@ -126,12 +128,12 @@ class NES
             }
         }
 
-        bool is_game_loaded()
+        inline bool is_game_loaded()
         {
             return game_loaded;
         }
 
-        std::shared_ptr<PPU> get_ppu()
+        inline std::shared_ptr<PPU> get_ppu()
         {
         return ppu;
         }
@@ -142,6 +144,7 @@ class NES
             ppu->soft_reset();
             cart->soft_reset();
             bus->soft_reset();
+            game_loaded = false;
             ppu_accumulator = 0;
         }
 
@@ -167,7 +170,6 @@ class NES
 
 
 //SDL2
-void create_textures(SDL_Renderer* renderer);
 void destroy_textures();
 void handle_events(NES* nes, bool& running, SDL_manager* manager);
 //ImGUI
@@ -228,7 +230,6 @@ int main(int argc, char *argv[])
         {
             nes.run_frame();
             draw_frame(nes.get_ppu(), manager.get_renderer());
-            //draw_pattern_table(nes.get_ppu());
         }
         handle_imGui(&nes, running, manager.get_renderer());
         SDL_RenderPresent(manager.get_renderer());
@@ -408,7 +409,8 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                 nfdchar_t *outPath = NULL;
                 nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
                     
-                if ( result == NFD_OKAY ) {
+                if ( result == NFD_OKAY ) 
+                {
                     nes->load_game(outPath);
                     free(outPath);
                 }     
@@ -446,7 +448,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
         {
             if(ImGui::MenuItem("Nametable viewer"))
             {
-                if(nametable_window == nullptr)
+                if(nametable_window == nullptr && nes->is_game_loaded())
                 {
                     nametable_window = SDL_CreateWindow("Nametable viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
                     nametable_renderer = SDL_CreateRenderer(nametable_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -457,7 +459,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
 
             if(ImGui::MenuItem("Pattern table viewer"))
             {
-                if(pattern_window == nullptr)
+                if(pattern_window == nullptr && nes->is_game_loaded())
                 {
                     pattern_window = SDL_CreateWindow("Pattern table viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
                     pattern_renderer = SDL_CreateRenderer(pattern_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -469,7 +471,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
 
             if(ImGui::MenuItem("Sprite viewer"))
             {
-                if(sprite_window == nullptr)
+                if(sprite_window == nullptr && nes->is_game_loaded())
                 {
                     sprite_window = SDL_CreateWindow("Sprite viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 256, 240, 0);
                     sprite_renderer = SDL_CreateRenderer(sprite_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);

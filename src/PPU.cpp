@@ -564,12 +564,6 @@ void inline PPU::increment_v_ppudata()
     }
 }
 
-unsigned long PPU::get_frame()
-{
-    return frame;
-}
-
-
 void PPU::sprite_evaluation()
 {
     //Cycle 65 resetting useful variables
@@ -723,7 +717,7 @@ void PPU::draw_sprite_pixel()
                     sprite_msb <<= 1;
                 }
 
-                uint32_t color = get_palette_color(palette_sprite, pixel + 0x10);
+                uint32_t color = get_palette_color(palette_sprite, pixel | 0x10);
                 uint32_t x = sprite_0_x_coord + j;
                 uint32_t screen_index = scanline * 256 + x;
 
@@ -731,27 +725,26 @@ void PPU::draw_sprite_pixel()
                 {
                     if((scanline_buffer[x] & 0x4) == 0)
                     {
-                        if(scanline_buffer[x] == 0x00 && pixel == 0x00)
-                        {
+                        if(scanline_buffer[x] == 0x00 && pixel == 0x00)         
                             screen[screen_index] = system_palette[get_palette_color(0, 0)];
-                            //scanline_buffer[x] |= 0x4;
-                        }
+                        
                         else if(scanline_buffer[x] == 0x00 && pixel != 0x00)
                         {
                             screen[screen_index] = system_palette[color];
                             scanline_buffer[x] |= 0x4;
                         }
+
                         else if(pixel == 0x00 && (scanline_buffer[x] != 0x00));
+
                         else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && !(attribute_sprite & 0x20) )
                         {
                             screen[screen_index] = system_palette[color];
                             scanline_buffer[x] |= 0x4;
                         }
-                        else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && (attribute_sprite & 0x20) )
-                        {
-                            //screen[screen_index] = system_palette[color];
+                        
+                        else if( (scanline_buffer[x] != 0x00) && (pixel != 0x00) && (attribute_sprite & 0x20) )  
                             scanline_buffer[x] |= 0x4;
-                        }
+                        
                     }                   
                 }                
             }
