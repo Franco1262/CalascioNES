@@ -108,6 +108,8 @@ class NES
                     ppu_accumulator -= 1.0;
                 }
                 cpu->tick();
+                if(log_cpu)
+                    std::cout << std::hex <<(int)cpu->get_opcode() << std::endl;
             }      
         }
 
@@ -137,7 +139,12 @@ class NES
 
         inline std::shared_ptr<PPU> get_ppu()
         {
-        return ppu;
+            return ppu;
+        }
+
+        void set_log_cpu()
+        {
+            log_cpu = !log_cpu;
         }
 
         void reset()
@@ -156,6 +163,8 @@ class NES
             load_game(old_game_filename);
         }
 
+
+
     private:
         std::shared_ptr<CPU> cpu;
         std::shared_ptr<PPU> ppu;
@@ -167,6 +176,7 @@ class NES
         bool pause = false;
         bool game_loaded = false;
         std::string old_game_filename;
+        bool log_cpu = false;
 
 };
 
@@ -236,7 +246,7 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255); // Clear to black
         SDL_RenderClear(manager.get_renderer());
 
-        auto a = SDL_GetTicks64();
+        auto a = SDL_GetTicks();
 
         if(nes.is_game_loaded())
         {
@@ -244,7 +254,7 @@ int main(int argc, char *argv[])
             draw_frame(nes.get_ppu(), manager.get_renderer());
         }
 
-        auto b = SDL_GetTicks64();
+        auto b = SDL_GetTicks();
         double elapsed = b - a;
 
         handle_imGui(&nes, running, manager.get_renderer());
@@ -404,6 +414,10 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
                     if (nes->is_game_loaded())
                         nes->change_timing();
                     break;
+                case SDL_SCANCODE_U:
+                    nes->set_log_cpu();
+                    break;
+                
 
                 default: break;
             }
