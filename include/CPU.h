@@ -3,7 +3,10 @@
 #include <vector>
 #include <fstream>
 #include <memory>
-//#include "Logger.h"
+
+
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
 
 class Bus;
 class CPU
@@ -65,6 +68,8 @@ class CPU
         
         uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
 
+        json json_data;
+
 
         struct Instruction
         {
@@ -87,12 +92,45 @@ class CPU
 
         //Transfer instructions
 
-        void LDA();
-        void LDX();
-        void LDY();
-        void STA();
-        void STX();
-        void STY();
+        void LDA_imm();
+        void LDA_zp();
+        void LDA_zpx();
+        void LDA_abs();
+        void LDA_absx();
+        void LDA_absy();
+        void LDA_indx();
+        void LDA_indy();
+
+        void LDX_imm();
+        void LDX_zp();
+        void LDX_zpy();
+        void LDX_abs();
+        void LDX_absy();
+
+
+        void LDY_imm();
+        void LDY_zp();
+        void LDY_zpx();
+        void LDY_abs();
+        void LDY_absx();
+
+        void STA_zp();
+        void STA_zpx();
+        void STA_abs();
+        void STA_absx();
+        void STA_absy();
+        void STA_indx();
+        void STA_indy();
+
+        void STX_abs();
+        void STX_zp();
+        void STX_zpy();
+
+
+        void STY_zp();
+        void STY_zpx();
+        void STY_abs();
+
         void TAX();
         void TAY();
         void TXA();
@@ -108,36 +146,116 @@ class CPU
 
         //Decrement and increment instructions
 
-        void DEC();
+        void DEC_abs();
+        void DEC_zp();
+        void DEC_zpx();
+        void DEC_absx();
+
         void DEX();
         void DEY();
-        void INC();
+
+        void INC_abs();
+        void INC_zp();
+        void INC_zpx();
+        void INC_absx();
+
         void INX();
         void INY();
 
         //Arithmetic operations
 
-        void ADC();
-        void SBC();
+        void ADC_imm();
+        void ADC_zp();
+        void ADC_zpx();
+        void ADC_abs();
+        void ADC_absx();
+        void ADC_absy();
+        void ADC_indx();
+        void ADC_indy();;
+
+        void SBC_imm();
+        void SBC_zp();
+        void SBC_zpx();
+        void SBC_abs();
+        void SBC_absx();
+        void SBC_absy();
+        void SBC_indx();
+        void SBC_indy();
 
         //Logical operations
 
-        void AND();
-        void EOR();
-        void ORA();
+        void AND_imm();
+        void AND_zp();
+        void AND_zpx();
+        void AND_abs();
+        void AND_absx();
+        void AND_absy();
+        void AND_indx();
+        void AND_indy();
+
+        void EOR_imm();
+        void EOR_zp();
+        void EOR_zpx();
+        void EOR_abs();
+        void EOR_absx();
+        void EOR_absy();
+        void EOR_indx();
+        void EOR_indy();
+
+        void ORA_imm();
+        void ORA_zp();
+        void ORA_zpx();
+        void ORA_abs();
+        void ORA_absx();
+        void ORA_absy();
+        void ORA_indx();
+        void ORA_indy();
+
 
         //Shift &CPU:: Rotate Instructions
 
-        void ASL();
-        void LSR();
-        void ROL();
-        void ROR();
+        void ASL_imm();
+        void ASL_zp();
+        void ASL_zpx();
+        void ASL_abs();
+        void ASL_absx();
+
+        void LSR_imm();
+        void LSR_zp();
+        void LSR_zpx();
+        void LSR_abs();
+        void LSR_absx();
+
+        void ROL_imm();
+        void ROL_zp();
+        void ROL_zpx();
+        void ROL_abs();
+        void ROL_absx();
+
+        void ROR_imm();
+        void ROR_zp();
+        void ROR_zpx();
+        void ROR_abs();
+        void ROR_absx();
 
         //Comparison instructions
 
-        void CMP();
-        void CPX();
-        void CPY();
+        void CMP_imm();
+        void CMP_zp();
+        void CMP_zpx();
+        void CMP_abs();
+        void CMP_absx();
+        void CMP_absy();
+        void CMP_indx();
+        void CMP_indy();  
+
+        void CPX_imm();
+        void CPX_zp();
+        void CPX_abs();
+
+        void CPY_imm();
+        void CPY_zp();
+        void CPY_abs(); 
 
         //Conditional Branch Instructions
 
@@ -152,7 +270,9 @@ class CPU
 
         //Jumps &CPU:: Subroutines
 
-        void JMP();
+        void JMP_abs();
+        void JMP_ind(); 
+
         void JSR();
         void RTS();
 
@@ -163,7 +283,8 @@ class CPU
 
         //Other
 
-        void BIT();
+        void BIT_zp();
+        void BIT_abs();  
         void NOP();
         void XXX();
 
@@ -194,4 +315,5 @@ class CPU
         uint8_t read(uint16_t address);
 
         void transfer_oam_bytes();
+
 };

@@ -3,79 +3,74 @@
 #include <sstream>
 #include <iomanip>
 
-//Testeados ORA, ADC, SBC, CMP, CPX, CPY, EOR, AND, LDA, LDX, LDY, BIT, ASL, LSR, ROL, ROR, DEC, INC, STA, STX, STY, CLC
-//CLD, CLV, CLI, SEC, SED, SEI, DEX, DEY, INX, INY, NOP, TAX, TAY, TSX, TXA, TXS, TYA, BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS
-//PHA, PLA, PLP, PHP, JSR, RTS, RTI
-
-
 CPU::CPU()
 {
     Instr = 
     {
-        { 0x00, &CPU::BRK, 7 }, { 0x01, &CPU::ORA, 6 }, { 0x02, &CPU::XXX, 2 }, { 0x03, &CPU::XXX, 8 },
-        { 0x04, &CPU::NOP, 3 }, { 0x05, &CPU::ORA, 3 }, { 0x06, &CPU::ASL, 5 }, { 0x07, &CPU::XXX, 5 },
-        { 0x08, &CPU::PHP, 3 }, { 0x09, &CPU::ORA, 2 }, { 0x0A, &CPU::ASL, 2 }, { 0x0B, &CPU::XXX, 2 },
-        { 0x0C, &CPU::NOP, 4 }, { 0x0D, &CPU::ORA, 4 }, { 0x0E, &CPU::ASL, 6 }, { 0x0F, &CPU::XXX, 6 },
-        { 0x10, &CPU::BPL, 4 }, { 0x11, &CPU::ORA, 6 }, { 0x12, &CPU::XXX, 2 }, { 0x13, &CPU::XXX, 8 },
-        { 0x14, &CPU::NOP, 4 }, { 0x15, &CPU::ORA, 4 }, { 0x16, &CPU::ASL, 6 }, { 0x17, &CPU::XXX, 6 },
-        { 0x18, &CPU::CLC, 2 }, { 0x19, &CPU::ORA, 5 }, { 0x1A, &CPU::NOP, 2 }, { 0x1B, &CPU::XXX, 7 },
-        { 0x1C, &CPU::XXX, 4 }, { 0x1D, &CPU::ORA, 5 }, { 0x1E, &CPU::ASL, 7 }, { 0x1F, &CPU::XXX, 7 },
-        { 0x20, &CPU::JSR, 6 }, { 0x21, &CPU::AND, 6 }, { 0x22, &CPU::XXX, 2 }, { 0x23, &CPU::XXX, 8 },
-        { 0x24, &CPU::BIT, 3 }, { 0x25, &CPU::AND, 3 }, { 0x26, &CPU::ROL, 5 }, { 0x27, &CPU::XXX, 5 },
-        { 0x28, &CPU::PLP, 4 }, { 0x29, &CPU::AND, 2 }, { 0x2A, &CPU::ROL, 2 }, { 0x2B, &CPU::XXX, 2 },
-        { 0x2C, &CPU::BIT, 4 }, { 0x2D, &CPU::AND, 4 }, { 0x2E, &CPU::ROL, 6 }, { 0x2F, &CPU::XXX, 6 },
-        { 0x30, &CPU::BMI, 4 }, { 0x31, &CPU::AND, 6 }, { 0x32, &CPU::XXX, 2 }, { 0x33, &CPU::XXX, 8 },
-        { 0x34, &CPU::XXX, 4 }, { 0x35, &CPU::AND, 4 }, { 0x36, &CPU::ROL, 6 }, { 0x37, &CPU::XXX, 6 },
-        { 0x38, &CPU::SEC, 2 }, { 0x39, &CPU::AND, 5 }, { 0x3A, &CPU::NOP, 2 }, { 0x3B, &CPU::XXX, 7 },
-        { 0x3C, &CPU::XXX, 4 }, { 0x3D, &CPU::AND, 5 }, { 0x3E, &CPU::ROL, 7 }, { 0x3F, &CPU::XXX, 7 },
-        { 0x40, &CPU::RTI, 6 }, { 0x41, &CPU::EOR, 6 }, { 0x42, &CPU::XXX, 2 }, { 0x43, &CPU::XXX, 8 },
-        { 0x44, &CPU::NOP, 3 }, { 0x45, &CPU::EOR, 3 }, { 0x46, &CPU::LSR, 5 }, { 0x47, &CPU::XXX, 5 },
-        { 0x48, &CPU::PHA, 3 }, { 0x49, &CPU::EOR, 2 }, { 0x4A, &CPU::LSR, 2 }, { 0x4B, &CPU::XXX, 2 },
-        { 0x4C, &CPU::JMP, 3 }, { 0x4D, &CPU::EOR, 4 }, { 0x4E, &CPU::LSR, 6 }, { 0x4F, &CPU::XXX, 6 },
-        { 0x50, &CPU::BVC, 4 }, { 0x51, &CPU::EOR, 6 }, { 0x52, &CPU::XXX, 2 }, { 0x53, &CPU::XXX, 8 },
-        { 0x54, &CPU::XXX, 4 }, { 0x55, &CPU::EOR, 4 }, { 0x56, &CPU::LSR, 6 }, { 0x57, &CPU::XXX, 6 },
-        { 0x58, &CPU::CLI, 2 }, { 0x59, &CPU::EOR, 5 }, { 0x5A, &CPU::NOP, 2 }, { 0x5B, &CPU::XXX, 7 },
-        { 0x5C, &CPU::XXX, 4 }, { 0x5D, &CPU::EOR, 5 }, { 0x5E, &CPU::LSR, 7 }, { 0x5F, &CPU::XXX, 7 },
-        { 0x60, &CPU::RTS, 6 }, { 0x61, &CPU::ADC, 6 }, { 0x62, &CPU::XXX, 2 }, { 0x63, &CPU::XXX, 8 },
-        { 0x64, &CPU::XXX, 3 }, { 0x65, &CPU::ADC, 3 }, { 0x66, &CPU::ROR, 5 }, { 0x67, &CPU::XXX, 5 },
-        { 0x68, &CPU::PLA, 4 }, { 0x69, &CPU::ADC, 2 }, { 0x6A, &CPU::ROR, 2 }, { 0x6B, &CPU::XXX, 2 },
-        { 0x6C, &CPU::JMP, 5 }, { 0x6D, &CPU::ADC, 4 }, { 0x6E, &CPU::ROR, 6 }, { 0x6F, &CPU::XXX, 6 },
-        { 0x70, &CPU::BVS, 4 }, { 0x71, &CPU::ADC, 6 }, { 0x72, &CPU::XXX, 2 }, { 0x73, &CPU::XXX, 8 },
-        { 0x74, &CPU::XXX, 4 }, { 0x75, &CPU::ADC, 4 }, { 0x76, &CPU::ROR, 6 }, { 0x77, &CPU::XXX, 6 },
-        { 0x78, &CPU::SEI, 2 }, { 0x79, &CPU::ADC, 5 }, { 0x7A, &CPU::NOP, 2 }, { 0x7B, &CPU::XXX, 7 },
-        { 0x7C, &CPU::XXX, 4 }, { 0x7D, &CPU::ADC, 5 }, { 0x7E, &CPU::ROR, 7 }, { 0x7F, &CPU::XXX, 7 },
-        { 0x80, &CPU::XXX, 2 }, { 0x81, &CPU::STA, 6 }, { 0x82, &CPU::XXX, 2 }, { 0x83, &CPU::XXX, 6 },
-        { 0x84, &CPU::STY, 3 }, { 0x85, &CPU::STA, 3 }, { 0x86, &CPU::STX, 3 }, { 0x87, &CPU::XXX, 3 },
-        { 0x88, &CPU::DEY, 2 }, { 0x89, &CPU::XXX, 2 }, { 0x8A, &CPU::TXA, 2 }, { 0x8B, &CPU::XXX, 2 },
-        { 0x8C, &CPU::STY, 4 }, { 0x8D, &CPU::STA, 4 }, { 0x8E, &CPU::STX, 4 }, { 0x8F, &CPU::XXX, 4 },
-        { 0x90, &CPU::BCC, 4 }, { 0x91, &CPU::STA, 6 }, { 0x92, &CPU::XXX, 2 }, { 0x93, &CPU::XXX, 6 },
-        { 0x94, &CPU::STY, 4 }, { 0x95, &CPU::STA, 4 }, { 0x96, &CPU::STX, 4 }, { 0x97, &CPU::XXX, 4 },
-        { 0x98, &CPU::TYA, 2 }, { 0x99, &CPU::STA, 5 }, { 0x9A, &CPU::TXS, 2 }, { 0x9B, &CPU::XXX, 5 },
-        { 0x9C, &CPU::XXX, 5 }, { 0x9D, &CPU::STA, 5 }, { 0x9E, &CPU::XXX, 5 }, { 0x9F, &CPU::XXX, 5 },
-        { 0xA0, &CPU::LDY, 2 }, { 0xA1, &CPU::LDA, 6 }, { 0xA2, &CPU::LDX, 2 }, { 0xA3, &CPU::XXX, 6 },
-        { 0xA4, &CPU::LDY, 3 }, { 0xA5, &CPU::LDA, 3 }, { 0xA6, &CPU::LDX, 3 }, { 0xA7, &CPU::XXX, 3 },
-        { 0xA8, &CPU::TAY, 2 }, { 0xA9, &CPU::LDA, 2 }, { 0xAA, &CPU::TAX, 2 }, { 0xAB, &CPU::XXX, 2 },
-        { 0xAC, &CPU::LDY, 4 }, { 0xAD, &CPU::LDA, 4 }, { 0xAE, &CPU::LDX, 4 }, { 0xAF, &CPU::XXX, 4 },
-        { 0xB0, &CPU::BCS, 4 }, { 0xB1, &CPU::LDA, 6 }, { 0xB2, &CPU::XXX, 2 }, { 0xB3, &CPU::XXX, 5 },
-        { 0xB4, &CPU::LDY, 4 }, { 0xB5, &CPU::LDA, 4 }, { 0xB6, &CPU::LDX, 4 }, { 0xB7, &CPU::XXX, 4 },
-        { 0xB8, &CPU::CLV, 2 }, { 0xB9, &CPU::LDA, 5 }, { 0xBA, &CPU::TSX, 2 }, { 0xBB, &CPU::XXX, 4 },
-        { 0xBC, &CPU::LDY, 5 }, { 0xBD, &CPU::LDA, 5 }, { 0xBE, &CPU::LDX, 5 }, { 0xBF, &CPU::XXX, 4 },
-        { 0xC0, &CPU::CPY, 2 }, { 0xC1, &CPU::CMP, 6 }, { 0xC2, &CPU::XXX, 2 }, { 0xC3, &CPU::XXX, 8 },
-        { 0xC4, &CPU::CPY, 3 }, { 0xC5, &CPU::CMP, 3 }, { 0xC6, &CPU::DEC, 5 }, { 0xC7, &CPU::XXX, 5 },
-        { 0xC8, &CPU::INY, 2 }, { 0xC9, &CPU::CMP, 2 }, { 0xCA, &CPU::DEX, 2 }, { 0xCB, &CPU::XXX, 2 },
-        { 0xCC, &CPU::CPY, 4 }, { 0xCD, &CPU::CMP, 4 }, { 0xCE, &CPU::DEC, 6 }, { 0xCF, &CPU::XXX, 6 },
-        { 0xD0, &CPU::BNE, 4 }, { 0xD1, &CPU::CMP, 6 }, { 0xD2, &CPU::XXX, 2 }, { 0xD3, &CPU::XXX, 8 },
-        { 0xD4, &CPU::XXX, 4 }, { 0xD5, &CPU::CMP, 4 }, { 0xD6, &CPU::DEC, 6 }, { 0xD7, &CPU::XXX, 6 },
-        { 0xD8, &CPU::CLD, 2 }, { 0xD9, &CPU::CMP, 5 }, { 0xDA, &CPU::NOP, 2 }, { 0xDB, &CPU::XXX, 7 },
-        { 0xDC, &CPU::XXX, 4 }, { 0xDD, &CPU::CMP, 5 }, { 0xDE, &CPU::DEC, 7 }, { 0xDF, &CPU::XXX, 7 },
-        { 0xE0, &CPU::CPX, 2 }, { 0xE1, &CPU::SBC, 6 }, { 0xE2, &CPU::XXX, 2 }, { 0xE3, &CPU::XXX, 8 },
-        { 0xE4, &CPU::CPX, 3 }, { 0xE5, &CPU::SBC, 3 }, { 0xE6, &CPU::INC, 5 }, { 0xE7, &CPU::XXX, 5 },
-        { 0xE8, &CPU::INX, 2 }, { 0xE9, &CPU::SBC, 2 }, { 0xEA, &CPU::NOP, 2 }, { 0xEB, &CPU::XXX, 2 },
-        { 0xEC, &CPU::CPX, 4 }, { 0xED, &CPU::SBC, 4 }, { 0xEE, &CPU::INC, 6 }, { 0xEF, &CPU::XXX, 6 },
-        { 0xF0, &CPU::BEQ, 4 }, { 0xF1, &CPU::SBC, 6 }, { 0xF2, &CPU::XXX, 2 }, { 0xF3, &CPU::XXX, 8 },
-        { 0xF4, &CPU::XXX, 4 }, { 0xF5, &CPU::SBC, 4 }, { 0xF6, &CPU::INC, 6 }, { 0xF7, &CPU::XXX, 6 },
-        { 0xF8, &CPU::SED, 2 }, { 0xF9, &CPU::SBC, 5 }, { 0xFA, &CPU::NOP, 2 }, { 0xFB, &CPU::XXX, 7 },
-        { 0xFC, &CPU::XXX, 4 }, { 0xFD, &CPU::SBC, 5 }, { 0xFE, &CPU::INC, 7 }, { 0xFF, &CPU::XXX, 7 },
+        {0x00, &CPU::BRK, 7 },     {0x01, &CPU::ORA_indx, 6 },    {0x02, &CPU::XXX, 2 },         {0x03, &CPU::XXX, 8},
+        {0x04, &CPU::NOP, 3 },     {0x05, &CPU::ORA_zp, 3 },      {0x06, &CPU::ASL_zp, 5 },      {0x07, &CPU::XXX, 5},
+        {0x08, &CPU::PHP, 3 },     {0x09, &CPU::ORA_imm, 2 },     {0x0A, &CPU::ASL_imm, 2 },     {0x0B, &CPU::XXX, 2},
+        {0x0C, &CPU::NOP, 4 },     {0x0D, &CPU::ORA_abs, 4 },     {0x0E, &CPU::ASL_abs, 6 },     {0x0F, &CPU::XXX, 6},
+        {0x10, &CPU::BPL, 4 },     {0x11, &CPU::ORA_indy, 6 },    {0x12, &CPU::XXX, 2 },         {0x13, &CPU::XXX, 8},
+        {0x14, &CPU::NOP, 4 },     {0x15, &CPU::ORA_zpx, 4 },     {0x16, &CPU::ASL_zpx, 6 },     {0x17, &CPU::XXX, 6},
+        {0x18, &CPU::CLC, 2 },     {0x19, &CPU::ORA_absy, 5 },    {0x1A, &CPU::NOP, 2 },         {0x1B, &CPU::XXX, 7},
+        {0x1C, &CPU::XXX, 4 },     {0x1D, &CPU::ORA_absx, 5 },    {0x1E, &CPU::ASL_absx, 7 },    {0x1F, &CPU::XXX, 7},
+        {0x20, &CPU::JSR, 6 },     {0x21, &CPU::AND_indx, 6 },    {0x22, &CPU::XXX, 2 },         {0x23, &CPU::XXX, 8},
+        {0x24, &CPU::BIT_zp, 3 },  {0x25, &CPU::AND_zp, 3 },      {0x26, &CPU::ROL_zp, 5 },      {0x27, &CPU::XXX, 5},
+        {0x28, &CPU::PLP, 4 },     {0x29, &CPU::AND_imm, 2 },     {0x2A, &CPU::ROL_imm, 2 },     {0x2B, &CPU::XXX, 2},
+        {0x2C, &CPU::BIT_abs, 4},  {0x2D, &CPU::AND_abs, 4 },     {0x2E, &CPU::ROL_abs, 6 },     {0x2F, &CPU::XXX, 6},
+        {0x30, &CPU::BMI, 4 },     {0x31, &CPU::AND_indy, 6 },    {0x32, &CPU::XXX, 2 },         {0x33, &CPU::XXX, 8},
+        {0x34, &CPU::XXX, 4 },     {0x35, &CPU::AND_zpx, 4 },     {0x36, &CPU::ROL_zpx, 6 },     {0x37, &CPU::XXX, 6},
+        {0x38, &CPU::SEC, 2 },     {0x39, &CPU::AND_absy, 5 },    {0x3A, &CPU::NOP, 2 },         {0x3B, &CPU::XXX, 7},
+        {0x3C, &CPU::XXX, 4 },     {0x3D, &CPU::AND_absx, 5 },    {0x3E, &CPU::ROL_absx, 7 },    {0x3F, &CPU::XXX, 7},
+        {0x40, &CPU::RTI, 6 },     {0x41, &CPU::EOR_indx, 6 },    {0x42, &CPU::XXX, 2 },         {0x43, &CPU::XXX, 8},
+        {0x44, &CPU::NOP, 3 },     {0x45, &CPU::EOR_zp, 3 },      {0x46, &CPU::LSR_zp, 5 },      {0x47, &CPU::XXX, 5},
+        {0x48, &CPU::PHA, 3 },     {0x49, &CPU::EOR_imm, 2 },     {0x4A, &CPU::LSR_imm, 2 },     {0x4B, &CPU::XXX, 2},
+        {0x4C, &CPU::JMP_abs, 3 }, {0x4D, &CPU::EOR_abs, 4 },     {0x4E, &CPU::LSR_abs, 6 },     {0x4F, &CPU::XXX, 6},
+        {0x50, &CPU::BVC, 4 },     {0x51, &CPU::EOR_indy, 6 },    {0x52, &CPU::XXX, 2 },         {0x53, &CPU::XXX, 8},
+        {0x54, &CPU::XXX, 4 },     {0x55, &CPU::EOR_zpx, 4 },     {0x56, &CPU::LSR_zpx, 6 },     {0x57, &CPU::XXX, 6},
+        {0x58, &CPU::CLI, 2 },     {0x59, &CPU::EOR_absy, 5 },    {0x5A, &CPU::NOP, 2 },         {0x5B, &CPU::XXX, 7},
+        {0x5C, &CPU::XXX, 4 },     {0x5D, &CPU::EOR_absx, 5 },    {0x5E, &CPU::LSR_absx, 7 },    {0x5F, &CPU::XXX, 7},
+        {0x60, &CPU::RTS, 6 },     {0x61, &CPU::ADC_indx, 6 },    {0x62, &CPU::XXX, 2 },         {0x63, &CPU::XXX, 8},
+        {0x64, &CPU::XXX, 3 },     {0x65, &CPU::ADC_zp, 3 },      {0x66, &CPU::ROR_zp, 5 },      {0x67, &CPU::XXX, 5},
+        {0x68, &CPU::PLA, 4 },     {0x69, &CPU::ADC_imm, 2 },     {0x6A, &CPU::ROR_imm, 2 },     {0x6B, &CPU::XXX, 2},
+        {0x6C, &CPU::JMP_ind, 5 }, {0x6D, &CPU::ADC_abs, 4 },     {0x6E, &CPU::ROR_abs, 6 },     {0x6F, &CPU::XXX, 6},
+        {0x70, &CPU::BVS, 4 },     {0x71, &CPU::ADC_indy, 6 },    {0x72, &CPU::XXX, 2 },         {0x73, &CPU::XXX, 8},
+        {0x74, &CPU::XXX, 4 },     {0x75, &CPU::ADC_zpx, 4 },     {0x76, &CPU::ROR_zpx, 6 },     {0x77, &CPU::XXX, 6},
+        {0x78, &CPU::SEI, 2 },     {0x79, &CPU::ADC_absy, 5 },    {0x7A, &CPU::NOP, 2 },         {0x7B, &CPU::XXX, 7},
+        {0x7C, &CPU::XXX, 4 },     {0x7D, &CPU::ADC_absx, 5 },    {0x7E, &CPU::ROR_absx, 7 },    {0x7F, &CPU::XXX, 7},
+        {0x80, &CPU::XXX, 2 },     {0x81, &CPU::STA_indx, 6 },    {0x82, &CPU::XXX, 2 },         {0x83, &CPU::XXX, 6},
+        {0x84, &CPU::STY_zp, 3 },  {0x85, &CPU::STA_zp, 3 },      {0x86, &CPU::STX_zp, 3 },      {0x87, &CPU::XXX, 3},
+        {0x88, &CPU::DEY, 2 },     {0x89, &CPU::XXX, 2 },         {0x8A, &CPU::TXA, 2 },         {0x8B, &CPU::XXX, 2},
+        {0x8C, &CPU::STY_abs, 4 }, {0x8D, &CPU::STA_abs, 4 },     {0x8E, &CPU::STX_abs, 4 },     {0x8F, &CPU::XXX, 4},
+        {0x90, &CPU::BCC, 4 },     {0x91, &CPU::STA_indy, 6 },    {0x92, &CPU::XXX, 2 },         {0x93, &CPU::XXX, 6},
+        {0x94, &CPU::STY_zpx, 4 }, {0x95, &CPU::STA_zpx, 4 },     {0x96, &CPU::STX_zpy, 4 },     {0x97, &CPU::XXX, 4},
+        {0x98, &CPU::TYA, 2 },     {0x99, &CPU::STA_absy, 5 },    {0x9A, &CPU::TXS, 2 },         {0x9B, &CPU::XXX, 5},
+        {0x9C, &CPU::XXX, 5 },     {0x9D, &CPU::STA_absx, 5 },    {0x9E, &CPU::XXX, 5 },         {0x9F, &CPU::XXX, 5},
+        {0xA0, &CPU::LDY_imm, 2 }, {0xA1, &CPU::LDA_indx, 6 },    {0xA2, &CPU::LDX_imm, 2 },     {0xA3, &CPU::XXX, 6},
+        {0xA4, &CPU::LDY_zp, 3 },  {0xA5, &CPU::LDA_zp,   3 },    {0xA6, &CPU::LDX_zp, 3 },      {0xA7, &CPU::XXX, 3},
+        {0xA8, &CPU::TAY, 2 },     {0xA9, &CPU::LDA_imm,  2 },    {0xAA, &CPU::TAX, 2 },         {0xAB, &CPU::XXX, 2},
+        {0xAC, &CPU::LDY_abs, 4 }, {0xAD, &CPU::LDA_abs,  4 },    {0xAE, &CPU::LDX_abs, 4 },     {0xAF, &CPU::XXX, 4},
+        {0xB0, &CPU::BCS, 4 },     {0xB1, &CPU::LDA_indy, 6 },    {0xB2, &CPU::XXX, 2 },         {0xB3, &CPU::XXX, 5},
+        {0xB4, &CPU::LDY_zpx, 4 }, {0xB5, &CPU::LDA_zpx,  4 },    {0xB6, &CPU::LDX_zpy, 4 },     {0xB7, &CPU::XXX, 4},
+        {0xB8, &CPU::CLV, 2 },     {0xB9, &CPU::LDA_absy, 5 },    {0xBA, &CPU::TSX, 2 },         {0xBB, &CPU::XXX, 4},
+        {0xBC, &CPU::LDY_absx, 5 },{0xBD, &CPU::LDA_absx, 5 },    {0xBE, &CPU::LDX_absy, 5 },    {0xBF, &CPU::XXX, 4},
+        {0xC0, &CPU::CPY_imm, 2 }, {0xC1, &CPU::CMP_indx, 6 },    {0xC2, &CPU::XXX, 2 },         {0xC3, &CPU::XXX, 8},
+        {0xC4, &CPU::CPY_zp, 3 },  {0xC5, &CPU::CMP_zp, 3   },    {0xC6, &CPU::DEC_zp, 5 },      {0xC7, &CPU::XXX, 5},
+        {0xC8, &CPU::INY, 2 },     {0xC9, &CPU::CMP_imm, 2  },    {0xCA, &CPU::DEX, 2 },         {0xCB, &CPU::XXX, 2},
+        {0xCC, &CPU::CPY_abs, 4 }, {0xCD, &CPU::CMP_abs, 4  },    {0xCE, &CPU::DEC_abs, 6 },     {0xCF, &CPU::XXX, 6},
+        {0xD0, &CPU::BNE, 4 },     {0xD1, &CPU::CMP_indy, 6 },    {0xD2, &CPU::XXX, 2 },         {0xD3, &CPU::XXX, 8},
+        {0xD4, &CPU::XXX, 4 },     {0xD5, &CPU::CMP_zpx, 4  },    {0xD6, &CPU::DEC_zpx, 6 },     {0xD7, &CPU::XXX, 6},
+        {0xD8, &CPU::CLD, 2 },     {0xD9, &CPU::CMP_absy, 5 },    {0xDA, &CPU::NOP, 2 },         {0xDB, &CPU::XXX, 7},
+        {0xDC, &CPU::XXX, 4 },     {0xDD, &CPU::CMP_absx, 5 },    {0xDE, &CPU::DEC_absx, 7 },    {0xDF, &CPU::XXX, 7},
+        {0xE0, &CPU::CPX_imm, 2 }, {0xE1, &CPU::SBC_indx, 6 },    {0xE2, &CPU::XXX, 2 },         {0xE3, &CPU::XXX, 8},
+        {0xE4, &CPU::CPX_zp, 3 },  {0xE5, &CPU::SBC_zp, 3   },    {0xE6, &CPU::INC_zp, 5 },      {0xE7, &CPU::XXX, 5},
+        {0xE8, &CPU::INX, 2 },     {0xE9, &CPU::SBC_imm, 2  },    {0xEA, &CPU::NOP, 2 },         {0xEB, &CPU::XXX, 2},
+        {0xEC, &CPU::CPX_abs, 4 }, {0xED, &CPU::SBC_abs, 4  },    {0xEE, &CPU::INC_abs, 6 },     {0xEF, &CPU::XXX, 6},
+        {0xF0, &CPU::BEQ, 4 },     {0xF1, &CPU::SBC_indy, 6 },    {0xF2, &CPU::XXX, 2 },         {0xF3, &CPU::XXX, 8},
+        {0xF4, &CPU::XXX, 4 },     {0xF5, &CPU::SBC_zpx, 4  },    {0xF6, &CPU::INC_zpx, 6 },     {0xF7, &CPU::XXX, 6},
+        {0xF8, &CPU::SED, 2 },     {0xF9, &CPU::SBC_absy, 5 },    {0xFA, &CPU::NOP, 2 },         {0xFB, &CPU::XXX, 7},
+        {0xFC, &CPU::XXX, 4 },     {0xFD, &CPU::SBC_absx, 5 },    {0xFE, &CPU::INC_absx, 7 },    {0xFF, &CPU::XXX, 7},
     };
 
     odd_cycle = false;
@@ -189,8 +184,6 @@ void CPU::tick()
         }
     }
 
-
-    cycles++;
 }
 
 void CPU::fetch()
@@ -528,551 +521,566 @@ void CPU::CLD()
 
 //Transfer instructions
 
-void CPU::LDA()
+void CPU::LDA_imm()
 {
-    //Immediate
-    if(opcode == 0xA9)
-    {
-        data = read(PC);
-        Accumulator = data;
-        PC++;
-        n_cycles++;       
-    }
+    data = read(PC);
+    Accumulator = data;
+    PC++;
+    n_cycles++; 
+    upd_negative_zero_flags(data);      
+}
 
-    //Zero page
-    if(opcode == 0xA5)
+void CPU::LDA_zp()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
         {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
+            ie_zeropage<2>();
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break;
+        }
+    } 
+}
+
+void CPU::LDA_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { ie_zpxy<2>(X); break; }
+        case 3:
+        {
+            ie_zpxy<3>(X);
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break; 
+        }          
+    }  
+}
+
+void CPU::LDA_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+
+        case 3:
+            ie_abs<3>();
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break;         
+    }
+}
+
+void CPU::LDA_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; } 
+        case 2: { ie_absxy<2>(X); break; }                
+        case 3:
+            ie_absxy<3>(X);
+            //No page crossing, skips cycle 5
+            if(!page_crossing)
             {
-                ie_zeropage<2>();
+                page_crossing = true;
+                Accumulator = data; 
+                upd_negative_zero_flags(data);
+            }              
+            break; 
+        //Page crossed 
+        case 4:
+            ie_absxy<4>(X);            
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break;       
+    }   
+}
+
+void CPU::LDA_absy()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(Y); break; } 
+        case 2: { ie_absxy<2>(Y); break; }                
+        case 3:
+            ie_absxy<3>(Y);
+
+            //No page crossing, skips cycle 5
+            if(!page_crossing)
+            {
+                page_crossing = true;
                 Accumulator = data;
-                break;
+                upd_negative_zero_flags(data);
             }
-        }       
-    }
+                                
+            break; 
+        //Page crossed 
+        case 4:
+            ie_absxy<4>(Y);
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break;       
+    }     
+}
 
-    //Zero page, X
-    else if(opcode == 0xB5)
+void CPU::LDA_indx()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
+        case 1: { ie_indx<1>(); break; }
+        case 2: { ie_indx<2>(); break; }
+        case 3: { ie_indx<3>(); break; }
+        case 4: { ie_indx<4>(); break; }
+        case 5:
+            ie_indx<5>();
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::LDA_indy()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_indy<1>(); break; }
+        case 2: { ie_indy<2>(); break; }
+        case 3: { ie_indy<3>(); break; }            
+        case 4:
+            ie_indy<4>();
+            if(!page_crossing)
             {
-                ie_zpxy<3>(X);
+                page_crossing = true;
                 Accumulator = data;
-                break; 
-            }          
-        }        
-    }
+                upd_negative_zero_flags(data);
+            }
+                
+            break; 
+        case 5:
+            ie_indy<5>();
+            Accumulator = data;
+            upd_negative_zero_flags(data);
+            break; 
+    } 
+}
 
-    //Absolute
-    else if(opcode == 0xAD)
+
+void CPU::LDX_imm()
+{
+    data = read(PC);
+    PC++;
+    n_cycles++;
+    X = data;  
+    upd_negative_zero_flags(data);
+}
+
+void CPU::LDX_zp()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
         {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-                ie_abs<3>();
-                Accumulator = data;
-                break;         
-        } 
+            ie_zeropage<2>();
+            X = data;
+            upd_negative_zero_flags(data);
+            break;
+        }
     }
+}
 
-    //Absolute, X
-    else if(opcode == 0xBD)
+void CPU::LDX_zpy()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zpxy<1>(Y); break; }
+        case 2: { ie_zpxy<2>(Y); break; }
+        case 3:
         {
-            case 1: { ie_absxy<1>(X); break; } 
-            case 2: { ie_absxy<2>(X); break; }                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator = data; 
-                }              
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);            
-                Accumulator = data;
-                break;       
-        }        
-    }
-
-    //Absolute, Y
-    else if(opcode == 0xB9)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; } 
-            case 2: { ie_absxy<2>(Y); break; }                
-            case 3:
-                ie_absxy<3>(Y);
-
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator = data;
-                }
-                                   
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                Accumulator = data;
-                break;       
+            ie_zpxy<3>(Y);
+            X = data;
+            upd_negative_zero_flags(data);
+            break; 
         }          
     }
-
-    //Indirect, X
-    else if(opcode == 0xA1)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break; }
-            case 2: { ie_indx<2>(); break; }
-            case 3: { ie_indx<3>(); break; }
-            case 4: { ie_indx<4>(); break; }
-            case 5:
-                ie_indx<5>();
-                Accumulator = data;
-                break;
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0xB1)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }            
-            case 4:
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator = data;
-                }
-                    
-                break; 
-            case 5:
-                ie_indy<5>();
-                Accumulator = data;
-                break; 
-        }       
-    }
-
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
 }
 
-void CPU::LDX()
+void CPU::LDX_abs()
 {
-    //Immediate
-    if(opcode == 0xA2)
+    switch(n_cycles)
     {
-        data = read(PC);
-        PC++;
-        n_cycles++;
-        X = data;       
-    }
-
-    //Zero page
-    if(opcode == 0xA6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                X = data;
-                break;
-            }
-        }      
-    }
-
-    //Zero page, Y
-    else if(opcode == 0xB6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(Y); break; }
-            case 2: { ie_zpxy<2>(Y); break; }
-            case 3:
-            {
-                ie_zpxy<3>(Y);
-                X = data;
-                break; 
-            }          
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0xAE)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-                ie_abs<3>();
-                X = data;
-                break;         
-        } 
-    }
-
-    //Absolute, Y
-    else if(opcode == 0xBE)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; } 
-            case 2: { ie_absxy<2>(Y); break; }                
-            case 3:
-                ie_absxy<3>(Y);
-
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    X = data;
-                }
-                                   
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                X = data;
-                break;             
-        }         
-    }
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
-}
-
-void CPU::LDY()
-{
-    //Immediate
-    if(opcode == 0xA0)
-    {
-
-        data = read(PC);
-        PC++;
-        n_cycles++;
-        Y = data;
-
-    }
-
-    //Zero page
-    if(opcode == 0xA4)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                Y = data;
-                break;
-            }
-        }        
-    }
-
-    //Zero page, X
-    else if(opcode == 0xB4)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                ie_zpxy<3>(X);
-                Y = data;
-                break; 
-            }          
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0xAC)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-                ie_abs<3>();
-                Y = data;
-                break;         
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0xBC)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; } 
-            case 2: { ie_absxy<2>(X); break; }                
-            case 3:
-                ie_absxy<3>(X);
-
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Y = data;
-                }
-                                   
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                Y = data;
-                break;       
-        }         
-    }
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
-}
-void CPU::STA()
-{
-
-    //Zero page
-    if(opcode == 0x85)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break;}
-            case 2:
-            {
-                write(effective_addr, Accumulator);
-                n_cycles++;
-                break;
-            }
-        }
-    }
-    //Zero page, X
-    else if(opcode == 0x95)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                n_cycles++;
-                write((zero_page_addr + X) & 0xFF, Accumulator);
-                break; 
-            }          
-        }       
-    }
-    
-    //Absolute
-    else if(opcode == 0x8D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-            {
-                write(effective_addr, Accumulator);
-                n_cycles++;
-                break;  
-            }       
-        }       
-    }
-
-    //Absolute, X
-    else if(opcode == 0x9D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3: { n_cycles++; break; }
-            case 4:
-            {
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                write(effective_addr, Accumulator);
-                n_cycles++;
-                break; 
-            }      
-        }       
-    }
-    //Absolute, Y
-    else if(opcode == 0x99)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-            case 3: { n_cycles++; break; }
-            case 4:
-            {
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + Y;
-                write(effective_addr, Accumulator);
-                n_cycles++;
-                break; 
-            }  
-        }     
-    }
-    //Indirect, X
-    else if(opcode == 0x81)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break; }
-            case 2: { ie_indx<2>(); break; }
-            case 3: { ie_indx<3>(); break; }
-            case 4: { ie_indx<4>(); break; }
-            case 5:
-                n_cycles++;
-                write(effective_addr, Accumulator);
-                break;       
-        }    
-    }
-
-    //Indirect, Y
-    else if(opcode == 0x91)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }            
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + Y;
-                n_cycles++;
-                break; 
-            case 5:
-                write(effective_addr, Accumulator);
-                n_cycles++;
-                break; 
-        } 
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3:
+            ie_abs<3>();
+            X = data;
+            upd_negative_zero_flags(data);
+            break;
     }
 }
 
-void CPU::STX()
+void CPU::LDX_absy()
 {
-    //Absolute
-    if(opcode == 0x8E)
+    switch(n_cycles)
     {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; } 
-            case 2: { ie_abs<2>(); break; } 
-            case 3:
-                write(effective_addr, X);
-                n_cycles++;
-                break;         
-        }        
-    }
+        case 1: { ie_absxy<1>(Y); break; } 
+        case 2: { ie_absxy<2>(Y); break; }                
+        case 3:
+            ie_absxy<3>(Y);
 
-    //Zero page
-    else if(opcode == 0x86)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
+            // No page crossing, skip cycle 5
+            if(!page_crossing)
             {
-                write(effective_addr, X);
-                n_cycles++;
-                break;
+                page_crossing = true;
+                X = data;
+                upd_negative_zero_flags(data);
             }
-        }        
-    }
-
-    //Zero page, Y
-    else if (opcode == 0x96)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(Y); break; }
-            case 2: { ie_zpxy<2>(Y); break; }
-            case 3:
-                write((zero_page_addr + Y) & 0xFF, X);
-                n_cycles++;
-                break;
+            break;
             
-        } 
+        // Page crossed
+        case 4:
+            ie_absxy<4>(Y);
+            X = data;
+            upd_negative_zero_flags(data);
+            break;
     }
 }
-void CPU::STY()
+
+void CPU::LDY_imm()
 {
-    //Zero page
-    if(opcode == 0x84)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-                write(effective_addr, Y);
-                n_cycles++;
-                break;
-        } 
-    }
-
-    //Zero page, X
-    else if(opcode == 0x94)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-                write((zero_page_addr + X) & 0xFF, Y);
-                n_cycles++;
-                break;           
-        }  
-    }
-
-    //Absolute 
-    else if(opcode == 0x8C)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-                write(effective_addr, Y);
-                n_cycles++;
-                break;         
-        }
-    }
-
+    data = read(PC);        // Fetch the immediate value from the program counter
+    PC++;                   // Increment the program counter
+    n_cycles++;             // Advance the cycle
+    Y = data;               // Load the value into the Y register
+    upd_negative_zero_flags(data); // Update flags based on the loaded value
 }
+
+void CPU::LDY_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2:
+            ie_zeropage<2>();
+            Y = data;                 // Load the value into the Y register
+            upd_negative_zero_flags(data); // Update flags
+            break;
+    }
+}
+
+void CPU::LDY_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            ie_zpxy<2>(X); 
+            break;
+        case 3:
+            ie_zpxy<3>(X);
+            Y = data;                 // Load the value into the Y register
+            upd_negative_zero_flags(data); // Update flags
+            break; 
+    }
+}
+
+void CPU::LDY_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3:
+            ie_abs<3>();
+            Y = data;                 // Load the value into the Y register
+            upd_negative_zero_flags(data); // Update flags
+            break;
+    }
+}
+
+void CPU::LDY_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            ie_absxy<3>(X);
+
+            // If no page crossing, skip to the final step
+            if(!page_crossing)
+            {
+                page_crossing = true;
+                Y = data;             // Load the value into the Y register
+                upd_negative_zero_flags(data); // Update flags
+            }
+            break;
+
+        // Page crossing occurred, handle the extra cycle
+        case 4:
+            ie_absxy<4>(X);
+            Y = data;                 // Load the value into the Y register
+            upd_negative_zero_flags(data); // Update flags
+            break;
+    }
+}
+
+void CPU::STA_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2:
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            ie_zpxy<2>(X); 
+            break;
+        case 3:
+            write((zero_page_addr + X) & 0xFF, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3:
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = (absolute_addr & 0xFF00) >> 8;
+            low_byte = absolute_addr & 0x00FF;
+            effective_addr = ((high_byte << 8) | low_byte) + X;
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_absy()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(Y); 
+            break;
+        case 2: 
+            ie_absxy<2>(Y); 
+            break;
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = (absolute_addr & 0xFF00) >> 8;
+            low_byte = absolute_addr & 0x00FF;
+            effective_addr = ((high_byte << 8) | low_byte) + Y;
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_indx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_indx<1>(); 
+            break;
+        case 2: 
+            ie_indx<2>(); 
+            break;
+        case 3: 
+            ie_indx<3>(); 
+            break;
+        case 4: 
+            ie_indx<4>(); 
+            break;
+        case 5:
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STA_indy()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_indy<1>(); 
+            break;
+        case 2: 
+            ie_indy<2>(); 
+            break;
+        case 3: 
+            ie_indy<3>(); 
+            break;
+        case 4:
+            high_byte = (absolute_addr & 0xFF00) >> 8;
+            low_byte = absolute_addr & 0x00FF;
+            effective_addr = ((high_byte << 8) | low_byte) + Y;
+            n_cycles++;
+            break;
+        case 5:
+            write(effective_addr, Accumulator);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STX_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break; 
+        case 2: 
+            ie_abs<2>(); 
+            break; 
+        case 3:
+            write(effective_addr, X);
+            n_cycles++;
+            break;         
+    }
+}
+
+void CPU::STX_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2:
+            write(effective_addr, X);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STX_zpy()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(Y); 
+            break;
+        case 2: 
+            ie_zpxy<2>(Y); 
+            break;
+        case 3:
+            write((zero_page_addr + Y) & 0xFF, X);
+            n_cycles++;
+            break;
+    }
+}
+
+void CPU::STY_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2:
+            write(effective_addr, Y);
+            n_cycles++;
+            break;
+    } 
+}
+
+void CPU::STY_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            ie_zpxy<2>(X); 
+            break;
+        case 3:
+            write((zero_page_addr + X) & 0xFF, Y);
+            n_cycles++;
+            break;           
+    }  
+}
+
+void CPU::STY_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3:
+            write(effective_addr, Y);
+            n_cycles++;
+            break;         
+    }
+}
+
 void CPU::TAX()
 {
     X = Accumulator;
@@ -1166,101 +1174,119 @@ void CPU::PLP()
 }
 
 //Decrement and increment instructions
-void CPU::DEC()
+void CPU::DEC_abs()
 {
-    if(opcode == 0xCE)
+    switch(n_cycles)
     {
-        //Absolute
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3: { data = read(effective_addr); n_cycles++; break; };
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                if(data == 0x00)
-                    data = 0xFF;
-                else 
-                    data--;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; };
+        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 5:
+            if(data == 0x00)
+                data = 0xFF;
+            else 
+                data--;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
     }
-    //Zero page
-    else if(opcode == 0xC6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                if(data == 0x00)
-                    data = 0xFF;
-                else 
-                    data--;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-
-    else if(opcode == 0xD6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break;}
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                if(data == 0x00)
-                    data = 0xFF;
-                else 
-                    data--;
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-
-    else if(opcode == 0xDE)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                if(data == 0x00)
-                    data = 0xFF;
-                else 
-                    data--;
-                write(effective_addr, data);
-                n_cycles++;
-                break;         
-        }
-    }
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
 }
+
+void CPU::DEC_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2: 
+            ie_zeropage<2>(); 
+            break;
+        case 3: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 4:
+            if(data == 0x00)
+                data = 0xFF;
+            else 
+                data--;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::DEC_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            n_cycles++; 
+            break;
+        case 3: 
+            ie_zpxy<3>(X); 
+            break;
+        case 4: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 5:
+            if(data == 0x00)
+                data = 0xFF;
+            else 
+                data--;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;               
+    }
+}
+
+void CPU::DEC_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = (high_byte & 0xff) << 8;
+            l = (low_byte & 0xff);
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 6:
+            if(data == 0x00)
+                data = 0xFF;
+            else 
+                data--;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;         
+    }
+}
+
 void CPU::DEX()
 {
     if(X == 0x00)
@@ -1281,100 +1307,129 @@ void CPU::DEY()
     upd_negative_zero_flags(Y);
 }
 
-void CPU::INC()
+void CPU::INC_abs()
 {
-    if(opcode == 0xEE)
+    switch(n_cycles)
     {
-        //Absolute
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3: { data = read(effective_addr); n_cycles++; break; };
-            case 4: { write(effective_addr, data);n_cycles++; break; };
-            case 5:
-                if(data == 0xFF)
-                    data = 0x00;
-                else 
-                    data++;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3: 
+            data = read(effective_addr); 
+            n_cycles++; 
+            break;
+        case 4: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 5:
+            if(data == 0xFF)
+                data = 0x00;
+            else 
+                data++;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
     }
-    //Zero page
-    else if(opcode == 0xE6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                if(data == 0xFF)
-                    data = 0x00;
-                else 
-                    data++;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-
-    else if(opcode == 0xF6)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break;}
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                if(data == 0xFF)
-                    data = 0x00;
-                else 
-                    data++;
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-
-    else if(opcode == 0xFE)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                if(data == 0xFF)
-                    data = 0x00;
-                else 
-                    data++;
-                write(effective_addr, data);
-                n_cycles++;
-                break;          
-        }
-    }
-    upd_negative_zero_flags(data);
 }
+
+void CPU::INC_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2: 
+            ie_zeropage<2>(); 
+            break;
+        case 3: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 4:
+            if(data == 0xFF)
+                data = 0x00;
+            else 
+                data++;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::INC_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            n_cycles++; 
+            break;
+        case 3: 
+            ie_zpxy<3>(X); 
+            break;
+        case 4: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 5:
+            if(data == 0xFF)
+                data = 0x00;
+            else 
+                data++;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;               
+    }
+}
+
+void CPU::INC_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = (high_byte & 0xff) << 8;
+            l = (low_byte & 0xff);
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: 
+            write(effective_addr, data); 
+            n_cycles++; 
+            break;
+        case 6:
+            if(data == 0xFF)
+                data = 0x00;
+            else 
+                data++;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;          
+    }
+}
+
 void CPU::INX()
 {
     if(X == 0xFF)
@@ -1397,1463 +1452,1498 @@ void CPU::INY()
 
 //Arithmetic operations
 
-void CPU::ADC()
+void CPU::ADC_imm()
 {
-    //Immediate
-    if(opcode == 0x69)
-    {
-        data = read(PC);
-        PC++;
-        n_cycles++;
-        ADC_calc();            
-    }
-
-    //Zero page
-    if(opcode == 0x65)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                ADC_calc();
-                break;
-            }       
-        }
-    }
-
-    //Zero page, X
-    else if(opcode == 0x75)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-                ie_zpxy<3>(X);
-                ADC_calc();
-                break;           
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0x6D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-                ie_abs<3>();
-                ADC_calc();
-                break;        
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0x7D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                ADC_calc();
-                break;      
-        }        
-    }
-
-    //Absolute, Y
-    else if(opcode == 0x79)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                ADC_calc();
-                break;      
-        }
-    }
-
-    //Indirect, X
-    else if(opcode == 0x61)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break; }
-            case 2: { ie_indx<2>(); break; }
-            case 3: { ie_indx<3>(); break; }
-            case 4: { ie_indx<4>(); break; }
-            case 5:
-                ie_indx<5>();
-                ADC_calc();
-                break;
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0x71)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            case 5:
-                ie_indy<5>();
-                ADC_calc();
-                break; 
-        }       
-    }
-
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(Accumulator);
+    data = read(PC);
+    PC++;
+    n_cycles++;
+    ADC_calc();
+    upd_negative_zero_flags(Accumulator);
 }
-void CPU::SBC()
+
+void CPU::ADC_zp()
 {
-    if(opcode == 0xE9)
+    switch(n_cycles)
     {
-        data = read(PC);
-        data = ~data;
-        n_cycles++;
-        PC++;
-        ADC_calc();            
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2: 
+            ie_zeropage<2>(); 
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;
     }
-
-    //Zero page
-    if(opcode == 0xE5)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                data = ~data;
-                ADC_calc();
-                break;
-            }       
-        }
-    }
-
-    //Zero page, X
-    else if(opcode == 0xF5)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-                ie_zpxy<3>(X);
-                data = ~data;
-                ADC_calc();
-                break;           
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0xED)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-                ie_abs<3>();
-                data = ~data;
-                ADC_calc();
-                break;        
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0xFD)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    data = ~data;
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                data = ~data;
-                ADC_calc();
-                break;      
-        }        
-    }
-
-    //Absolute, Y
-    else if(opcode == 0xF9)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    data = ~data;
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                data = ~data;
-                ADC_calc();
-                break;      
-        }
-    }
-
-    //Indirect, X
-    else if(opcode == 0xE1)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break; }
-            case 2: { ie_indx<2>(); break; }
-            case 3: { ie_indx<3>(); break; }
-            case 4: { ie_indx<4>(); break; }
-            case 5:
-                ie_indx<5>();
-                data = ~data;
-                ADC_calc();
-                break;
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0xF1)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    data = ~data;
-                    ADC_calc();
-                    page_crossing = true;
-                }
-                break; 
-            case 5:
-                ie_indy<5>();
-                data = ~data;
-                ADC_calc();
-                break; 
-        }       
-    }
-
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(Accumulator);
 }
+
+void CPU::ADC_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            ie_zpxy<2>(X); 
+            break;
+        case 3: 
+            ie_zpxy<3>(X); 
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;           
+    }
+}
+
+void CPU::ADC_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3: 
+            ie_abs<3>(); 
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;        
+    } 
+}
+
+void CPU::ADC_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            ie_absxy<3>(X);
+            if(!page_crossing)
+            {
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 4:
+            ie_absxy<4>(X);
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;      
+    }        
+}
+
+void CPU::ADC_absy()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(Y); 
+            break;
+        case 2: 
+            ie_absxy<2>(Y); 
+            break;
+        case 3:
+            ie_absxy<3>(Y);
+            if(!page_crossing)
+            {
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 4:
+            ie_absxy<4>(Y);
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;      
+    }
+}
+
+void CPU::ADC_indx()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_indx<1>(); 
+            break;
+        case 2: 
+            ie_indx<2>(); 
+            break;
+        case 3: 
+            ie_indx<3>(); 
+            break;
+        case 4: 
+            ie_indx<4>(); 
+            break;
+        case 5:
+            ie_indx<5>();
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ADC_indy()
+{
+    switch(n_cycles)
+    {
+        case 1: 
+            ie_indy<1>(); 
+            break;
+        case 2: 
+            ie_indy<2>(); 
+            break;
+        case 3: 
+            ie_indy<3>(); 
+            break;             
+        case 4:
+            ie_indy<4>();
+            if(!page_crossing)
+            {
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 5:
+            ie_indy<5>();
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break; 
+    }       
+}
+
+void CPU::SBC_imm()
+{
+    data = read(PC);
+    PC++;
+    n_cycles++;
+    data = ~data; // Two's complement
+    ADC_calc();
+    upd_negative_zero_flags(Accumulator);
+}
+
+void CPU::SBC_zp()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_zeropage<1>(); 
+            break;
+        case 2: 
+            ie_zeropage<2>(); 
+            data = ~data; // Two's complement
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::SBC_zpx()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_zpxy<1>(X); 
+            break;
+        case 2: 
+            ie_zpxy<2>(X); 
+            break;
+        case 3: 
+            ie_zpxy<3>(X); 
+            data = ~data; // Two's complement
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;           
+    }
+}
+
+void CPU::SBC_abs()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_abs<1>(); 
+            break;
+        case 2: 
+            ie_abs<2>(); 
+            break;
+        case 3: 
+            ie_abs<3>(); 
+            data = ~data; // Two's complement
+            ADC_calc(); 
+            upd_negative_zero_flags(Accumulator);
+            break;        
+    } 
+}
+
+void CPU::SBC_absx()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(X); 
+            break;
+        case 2: 
+            ie_absxy<2>(X); 
+            break;
+        case 3:
+            ie_absxy<3>(X);
+            if (!page_crossing)
+            {
+                data = ~data; // Two's complement
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 4:
+            ie_absxy<4>(X);
+            data = ~data; // Two's complement
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;      
+    }        
+}
+
+void CPU::SBC_absy()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_absxy<1>(Y); 
+            break;
+        case 2: 
+            ie_absxy<2>(Y); 
+            break;
+        case 3:
+            ie_absxy<3>(Y);
+            if (!page_crossing)
+            {
+                data = ~data; // Two's complement
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 4:
+            ie_absxy<4>(Y);
+            data = ~data; // Two's complement
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;      
+    }
+}
+
+void CPU::SBC_indx()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_indx<1>(); 
+            break;
+        case 2: 
+            ie_indx<2>(); 
+            break;
+        case 3: 
+            ie_indx<3>(); 
+            break;
+        case 4: 
+            ie_indx<4>(); 
+            break;
+        case 5:
+            ie_indx<5>();
+            data = ~data; // Two's complement
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::SBC_indy()
+{
+    switch (n_cycles)
+    {
+        case 1: 
+            ie_indy<1>(); 
+            break;
+        case 2: 
+            ie_indy<2>(); 
+            break;
+        case 3: 
+            ie_indy<3>(); 
+            break;             
+        case 4:
+            ie_indy<4>();
+            if (!page_crossing)
+            {
+                data = ~data; // Two's complement
+                ADC_calc();
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break; 
+        case 5:
+            ie_indy<5>();
+            data = ~data; // Two's complement
+            ADC_calc();
+            upd_negative_zero_flags(Accumulator);
+            break; 
+    }       
+}
+
 
 //Logical operations
 
-void CPU::AND()
+void CPU::AND_imm()
 {
-    //Immediate
-    if(opcode == 0x29)
-    {
-        data = read(PC);
-        Accumulator &= data;
-        PC++;
-        n_cycles++;
-    }
-
-    //Zero page
-    if(opcode == 0x25)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break;}
-            case 2:
-            {
-                ie_zeropage<2>();
-                Accumulator &= data;
-                break;
-            }
-        }       
-    }
-
-    //Zero page, X
-    else if(opcode == 0x35)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                ie_zpxy<3>(X);
-                Accumulator &= data;
-                break; 
-            }          
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0x2D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-            {
-                ie_abs<3>();
-                Accumulator &= data;
-                break;  
-            }       
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0x3D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator &= data;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                Accumulator &= data;
-                break;      
-        }       
-    }
-
-    //Absolute, Y
-    else if(opcode == 0x39)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator &= data;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                Accumulator &= data;
-                break;      
-        }        
-    }
-
-    //Indirect, X
-    else if(opcode == 0x21)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break;}
-            case 2: { ie_indx<2>(); break;}
-            case 3: { ie_indx<3>(); break;}
-            case 4: { ie_indx<4>(); break;}
-            case 5:
-            {
-                ie_indx<5>();
-                Accumulator &= data;
-                break;
-            }
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0x31)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
-            {
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator &= data;
-                }
-                break; 
-            }
-            case 5:
-            {
-                ie_indy<5>();
-                Accumulator &= data;
-                break; 
-            }
-        }      
-    }
-
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(Accumulator);    
-}
-void CPU::EOR()
-{
-    //Immediate
-    if(opcode == 0x49)
-    {
-        data = read(PC);
-        Accumulator ^= data;
-        PC++;
-        n_cycles++;
-    }
-
-    //Zero page
-    if(opcode == 0x45)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break;}
-            case 2:
-            {
-                ie_zeropage<2>();
-                Accumulator ^= data;
-                break;
-            }
-        }       
-    }
-
-    //Zero page, X
-    else if(opcode == 0x55)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                ie_zpxy<3>(X);
-                Accumulator ^= data;
-                break; 
-            }          
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0x4D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-            {
-                ie_abs<3>();
-                Accumulator ^= data;
-                break;  
-            }       
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0x5D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator ^= data;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                Accumulator ^= data;
-                break;      
-        }       
-    }
-
-    //Absolute, Y
-    else if(opcode == 0x59)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator ^= data;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                Accumulator ^= data;
-                break;      
-        }        
-    }
-
-    //Indirect, X
-    else if(opcode == 0x41)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break;}
-            case 2: { ie_indx<2>(); break;}
-            case 3: { ie_indx<3>(); break;}
-            case 4: { ie_indx<4>(); break;}
-            case 5:
-            {
-                ie_indx<5>();
-                Accumulator ^= data;
-                break;
-            }
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0x51)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
-            {
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    Accumulator ^= data;
-                }
-                break; 
-            }
-            case 5:
-            {
-                ie_indy<5>();
-                Accumulator ^= data;
-                break; 
-            }
-        }      
-    }
-
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(Accumulator);    
+    data = read(PC);
+    Accumulator &= data;
+    PC++;
+    n_cycles++;
+    upd_negative_zero_flags(Accumulator);
 }
 
-void CPU::ORA()
+void CPU::AND_zp()
 {
-    //Immediate
-    if(opcode == 0x09)
+    switch(n_cycles)
     {
-        data = read(PC);
-        Accumulator |= data;
-        n_cycles++;
-        PC++;
-    }
-
-    //Zero page
-    if(opcode == 0x05)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break;}
-            case 2:
-            {
-                ie_zeropage<2>();
-                Accumulator |= data;
-                break;
-            }
-        }       
-    }
-
-    //Zero page, X
-    else if(opcode == 0x15)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                ie_zpxy<3>(X);
-                Accumulator |= data;
-                break; 
-            }          
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0x0D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-            {
-                ie_abs<3>();
-                Accumulator |= data;
-                break;  
-            }       
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0x1D)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    Accumulator |= data;
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-
-                ie_absxy<4>(X);
-                Accumulator |= data;
-                break;      
-        }       
-    }
-
-    //Absolute, Y
-    else if(opcode == 0x19)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    Accumulator |= data;
-                    page_crossing = true;
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                Accumulator |= data;
-                break;      
-        }        
-    }
-
-    //Indirect, X
-    else if(opcode == 0x01)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break;}
-            case 2: { ie_indx<2>(); break;}
-            case 3: { ie_indx<3>(); break;}
-            case 4: { ie_indx<4>(); break;}
-            case 5:
-            {
-                ie_indx<5>();
-                Accumulator |= data;
-                break;
-            }
-        }
-    }
-
-    //Indirect, Y
-    else if(opcode == 0x11)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
-            {
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    Accumulator |= data;
-                    page_crossing = true;
-                }
-                break; 
-            }
-            case 5:
-            {
-                ie_indy<5>();
-                Accumulator |= data;
-                break; 
-            }
-        }      
-    }
-
-    if(n_cycles == Instr[opcode].cycles)
-    {
-        upd_negative_zero_flags(Accumulator);
+        case 1:
+            ie_zeropage<1>();
+            break;
+        case 2:
+            ie_zeropage<2>();
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
     }
 }
+
+void CPU::AND_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_zpxy<1>(X);
+            break;
+        case 2:
+            ie_zpxy<2>(X);
+            break;
+        case 3:
+            ie_zpxy<3>(X);
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::AND_abs()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_abs<1>();
+            break;
+        case 2:
+            ie_abs<2>();
+            break;
+        case 3:
+            ie_abs<3>();
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::AND_absx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(X);
+            break;
+        case 2:
+            ie_absxy<2>(X);
+            break;
+        case 3:
+            ie_absxy<3>(X);
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator &= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(X);
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::AND_absy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(Y);
+            break;
+        case 2:
+            ie_absxy<2>(Y);
+            break;
+        case 3:
+            ie_absxy<3>(Y);
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator &= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(Y);
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::AND_indx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indx<1>();
+            break;
+        case 2:
+            ie_indx<2>();
+            break;
+        case 3:
+            ie_indx<3>();
+            break;
+        case 4:
+            ie_indx<4>();
+            break;
+        case 5:
+            ie_indx<5>();
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::AND_indy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indy<1>();
+            break;
+        case 2:
+            ie_indy<2>();
+            break;
+        case 3:
+            ie_indy<3>();
+            break;
+        case 4:
+            ie_indy<4>();
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator &= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 5:
+            ie_indy<5>();
+            Accumulator &= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_imm()
+{
+    data = read(PC);
+    Accumulator ^= data;
+    PC++;
+    n_cycles++;
+    upd_negative_zero_flags(Accumulator);
+}
+
+void CPU::EOR_zp()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_zeropage<1>();
+            break;
+        case 2:
+            ie_zeropage<2>();
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_zpxy<1>(X);
+            break;
+        case 2:
+            ie_zpxy<2>(X);
+            break;
+        case 3:
+            ie_zpxy<3>(X);
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_abs()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_abs<1>();
+            break;
+        case 2:
+            ie_abs<2>();
+            break;
+        case 3:
+            ie_abs<3>();
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_absx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(X);
+            break;
+        case 2:
+            ie_absxy<2>(X);
+            break;
+        case 3:
+            ie_absxy<3>(X);
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator ^= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(X);
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_absy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(Y);
+            break;
+        case 2:
+            ie_absxy<2>(Y);
+            break;
+        case 3:
+            ie_absxy<3>(Y);
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator ^= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(Y);
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_indx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indx<1>();
+            break;
+        case 2:
+            ie_indx<2>();
+            break;
+        case 3:
+            ie_indx<3>();
+            break;
+        case 4:
+            ie_indx<4>();
+            break;
+        case 5:
+            ie_indx<5>();
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::EOR_indy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indy<1>();
+            break;
+        case 2:
+            ie_indy<2>();
+            break;
+        case 3:
+            ie_indy<3>();
+            break;
+        case 4:
+            ie_indy<4>();
+            if (!page_crossing)
+            {
+                page_crossing = true;
+                Accumulator ^= data;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 5:
+            ie_indy<5>();
+            Accumulator ^= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_imm()
+{
+    data = read(PC);
+    Accumulator |= data;
+    PC++;
+    n_cycles++;
+    upd_negative_zero_flags(Accumulator);
+}
+
+void CPU::ORA_zp()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_zeropage<1>();
+            break;
+        case 2:
+            ie_zeropage<2>();
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_zpxy<1>(X);
+            break;
+        case 2:
+            ie_zpxy<2>(X);
+            break;
+        case 3:
+            ie_zpxy<3>(X);
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_abs()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_abs<1>();
+            break;
+        case 2:
+            ie_abs<2>();
+            break;
+        case 3:
+            ie_abs<3>();
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_absx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(X);
+            break;
+        case 2:
+            ie_absxy<2>(X);
+            break;
+        case 3:
+            ie_absxy<3>(X);
+            if (!page_crossing)
+            {
+                Accumulator |= data;
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(X);
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_absy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_absxy<1>(Y);
+            break;
+        case 2:
+            ie_absxy<2>(Y);
+            break;
+        case 3:
+            ie_absxy<3>(Y);
+            if (!page_crossing)
+            {
+                Accumulator |= data;
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 4:
+            ie_absxy<4>(Y);
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_indx()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indx<1>();
+            break;
+        case 2:
+            ie_indx<2>();
+            break;
+        case 3:
+            ie_indx<3>();
+            break;
+        case 4:
+            ie_indx<4>();
+            break;
+        case 5:
+            ie_indx<5>();
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
+void CPU::ORA_indy()
+{
+    switch(n_cycles)
+    {
+        case 1:
+            ie_indy<1>();
+            break;
+        case 2:
+            ie_indy<2>();
+            break;
+        case 3:
+            ie_indy<3>();
+            break;
+        case 4:
+            ie_indy<4>();
+            if (!page_crossing)
+            {
+                Accumulator |= data;
+                page_crossing = true;
+                upd_negative_zero_flags(Accumulator);
+            }
+            break;
+        case 5:
+            ie_indy<5>();
+            Accumulator |= data;
+            upd_negative_zero_flags(Accumulator);
+            break;
+    }
+}
+
 
 //Shift &CPU:: Rotate Instructions
 
-void CPU::ASL()
+void CPU::ASL_imm()
 {
-    if(opcode == 0x0A)
-    {
-        P = (P  & 0xFE) | ((Accumulator & 0x80) >> 7);
-        Accumulator <<=1;
-        Accumulator &= 0xFE;
-        data = Accumulator;
-        n_cycles++;
-    }
-
-    
-    if(opcode == 0x0E)
-    {
-        //Absolute
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break;}
-            case 2: { ie_abs<2>(); break;}
-            case 3: { data = read(effective_addr); n_cycles++; break; };
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                P = (P  & 0xFE) | ((data & 0x80) >> 7);
-                data <<= 1;
-                data &= 0xFE;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-    //Zero page
-    else if(opcode == 0x06)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                P = (P  & 0xFE) | ((data & 0x80) >> 7);
-                data <<= 1;
-                data &= 0xFE;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-
-    else if(opcode == 0x16)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break;}
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                P = (P  & 0xFE) | ((data & 0x80) >> 7);
-                data <<= 1;
-                data &= 0xFE;
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-
-    else if(opcode == 0x1E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                P = (P  & 0xFE) | ((data & 0x80) >> 7);
-                data <<= 1;
-                data &= 0xFE;
-                write(effective_addr, data);
-                n_cycles++;
-                break;           
-        }
-    }
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
-
-}
-void CPU::LSR()
-{
-
-    if(opcode == 0x4A)
-    {
-        P = (P  & 0xFE) | (Accumulator & 0x01);
-        Accumulator >>=1;
-        Accumulator &= 0x7F;
-        data = Accumulator;
-        n_cycles++;
-    }
-
-    //Absolute   
-    if(opcode == 0x4E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3: { data = read(effective_addr); n_cycles++; break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; }
-            case 5:
-                P = (P  & 0xFE) | (data & 0x01);
-                data >>= 1;
-                data &= 0x7F;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-    //Zero page
-    else if(opcode == 0x46)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                P = (P  & 0xFE) | (data & 0x01);
-                data >>= 1;
-                data &= 0x7F;
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-    else if(opcode == 0x56)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break; }
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                P = (P  & 0xFE) | (data & 0x01);
-                data >>= 1;
-                data &= 0x7F;
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-    else if(opcode == 0x5E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                data = read(effective_addr);
-                P = (P  & 0xFE) | (data & 0x01);
-                data >>= 1;
-                data &= 0x7F;
-                write(effective_addr, data);
-                n_cycles++;
-                break;           
-        }
-    }   
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
-}
-
-void CPU::ROL()
-{
-    uint8_t aux;
-
-    if(opcode == 0x2A)
-    {
-        aux = (Accumulator >> 7) & 0x01;
-        Accumulator <<= 1;
-        Accumulator = (Accumulator & 0xFE) | (P & 0x01);
-        P = (P  & 0xFE) | (aux & 0x01);
-        data = Accumulator;
-        n_cycles++;
-    }
-    //Absolute
-    if(opcode == 0x2E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3: { data = read(effective_addr); n_cycles++; break; };
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                aux = (data >> 7) & 0x01;
-                data <<= 1;
-                data = (data & 0xFE) | (P & 0x01);
-                P = (P  & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-    //Zero page
-    else if(opcode == 0x26)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                aux = (data >> 7) & 0x01;
-                data <<= 1;
-                data = (data & 0xFE) | (P & 0x01);
-                P = (P  & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-    else if(opcode == 0x36)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break; }
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                aux = (data >> 7) & 0x01;
-                data <<= 1;
-                data = (data & 0xFE) | (P & 0x01);
-                P = (P  & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-
-    else if(opcode == 0x3E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                data = read(effective_addr);
-                aux = (data >> 7) & 0x01;
-                data <<= 1;
-                data = (data & 0xFE) | (P & 0x01);
-                P = (P  & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;             
-        }
-    }
-    if(Instr[opcode].cycles == n_cycles)
-        upd_negative_zero_flags(data);
-}
-
-void CPU::ROR()
-{
-    uint8_t aux = false;
-
-    if(opcode == 0x6A)
-    {
-        aux = Accumulator & 0x01;
-        Accumulator >>= 1;
-        Accumulator = (Accumulator & 0x7F) | ((P & 0x01) << 7);
-        data = Accumulator;
-        P = (P & 0xFE) | (aux & 0x01);
-        n_cycles++;
-    }
-
-    if(opcode == 0x6E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3: { data = read(effective_addr); n_cycles++; break; };
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                aux = data & 0x01;
-                data >>= 1;
-                data = (data & 0x7F) | ((P & 0x01) << 7);
-                data = data;
-                P = (P & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page
-    else if(opcode == 0x66)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2: { ie_zeropage<2>(); break; }
-            case 3: { write(effective_addr, data); n_cycles++; break; };
-            case 4:
-                aux = data & 0x01;
-                data >>= 1;
-                data = (data & 0x7F) | ((P & 0x01) << 7);
-                data = data;
-                P = (P & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;
-        }
-    }
-
-    //Zero page, X
-    else if(opcode == 0x76)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { n_cycles++; break; }
-            case 3: { ie_zpxy<3>(X); break; }
-            case 4: { write(effective_addr, data); n_cycles++; break; };
-            case 5:
-                data = read(effective_addr);
-                aux = data & 0x01;
-                data >>= 1;
-                data = (data & 0x7F) | ((P & 0x01) << 7);
-                data = data;
-                P = (P & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;               
-        }
-    }
-
-    //Absolute, X
-
-    else if(opcode == 0x7E)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-            case 3:
-                n_cycles++;
-                break;
-            case 4:
-                high_byte = ((0xFF00 & absolute_addr) >> 8);
-                low_byte = 0x00FF & absolute_addr;
-                h = ((high_byte ) & 0xff) << 8;
-                l = (low_byte ) & 0xff;
-                effective_addr = (h | l) + X;
-                data = read(effective_addr);
-                n_cycles++;
-                break;
-            case 5: { write(effective_addr, data); n_cycles++; break; };
-            case 6:
-                data = read(effective_addr);
-                aux = data & 0x01;
-                data >>= 1;
-                data = (data & 0x7F) | ((P & 0x01) << 7);
-                data = data;
-                P = (P & 0xFE) | (aux & 0x01);
-                write(effective_addr, data);
-                n_cycles++;
-                break;            
-        }
-    }
+    P = (P  & 0xFE) | ((Accumulator & 0x80) >> 7);
+    Accumulator <<=1;
+    Accumulator &= 0xFE;
+    data = Accumulator;
+    n_cycles++;
     upd_negative_zero_flags(data);
 }
 
+void CPU::ASL_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2: { ie_zeropage<2>(); break; }
+        case 3: { write(effective_addr, data); n_cycles++; break; };
+        case 4:
+            P = (P  & 0xFE) | ((data & 0x80) >> 7);
+            data <<= 1;
+            data &= 0xFE;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::ASL_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { n_cycles++; break;}
+        case 3: { ie_zpxy<3>(X); break; }
+        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 5:
+            P = (P  & 0xFE) | ((data & 0x80) >> 7);
+            data <<= 1;
+            data &= 0xFE;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;               
+    }
+}
+
+void CPU::ASL_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break;}
+        case 2: { ie_abs<2>(); break;}
+        case 3: { data = read(effective_addr); n_cycles++; break; };
+        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 5:
+            P = (P  & 0xFE) | ((data & 0x80) >> 7);
+            data <<= 1;
+            data &= 0xFE;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::ASL_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; }
+        case 2: { ie_absxy<2>(X); break; }
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = ((high_byte ) & 0xff) << 8;
+            l = (low_byte ) & 0xff;
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 6:
+            P = (P  & 0xFE) | ((data & 0x80) >> 7);
+            data <<= 1;
+            data &= 0xFE;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;           
+    }
+}
+
+
+void CPU::LSR_imm()
+{
+    P = (P & 0xFE) | (Accumulator & 0x01);
+    Accumulator >>= 1;
+    Accumulator &= 0x7F;
+    data = Accumulator;
+    n_cycles++;
+    upd_negative_zero_flags(data);
+}
+
+void CPU::LSR_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2: { ie_zeropage<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; }
+        case 4:
+            P = (P & 0xFE) | (data & 0x01);
+            data >>= 1;
+            data &= 0x7F;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::LSR_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { n_cycles++; break; }
+        case 3: { ie_zpxy<3>(X); break; }
+        case 4: { data = read(effective_addr); n_cycles++; break; }
+        case 5:
+            P = (P & 0xFE) | (data & 0x01);
+            data >>= 1;
+            data &= 0x7F;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;               
+    }
+}
+
+void CPU::LSR_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; }
+        case 4: { write(effective_addr, data); n_cycles++; break; }
+        case 5:
+            P = (P  & 0xFE) | (data & 0x01);
+            data >>= 1;
+            data &= 0x7F;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::LSR_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; }
+        case 2: { ie_absxy<2>(X); break; }
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = ((high_byte ) & 0xff) << 8;
+            l = (low_byte ) & 0xff;
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 6:
+            data = read(effective_addr);
+            P = (P  & 0xFE) | (data & 0x01);
+            data >>= 1;
+            data &= 0x7F;
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;           
+    }
+}
+
+void CPU::ROL_imm()
+{
+    uint8_t aux = (Accumulator >> 7) & 0x01; // Get the carry bit
+    Accumulator <<= 1; // Shift left
+    Accumulator = (Accumulator & 0xFE) | (P & 0x01); // Insert carry from P
+    P = (P & 0xFE) | aux; // Update the carry in P
+    data = Accumulator;
+    n_cycles++;
+    upd_negative_zero_flags(data);
+}
+
+void CPU::ROL_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2: { ie_zeropage<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; }
+        case 4:
+            {
+                uint8_t aux = (data >> 7) & 0x01;
+                data <<= 1;
+                data = (data & 0xFE) | (P & 0x01);
+                P = (P & 0xFE) | aux;
+                write(effective_addr, data);
+                n_cycles++;
+                upd_negative_zero_flags(data);
+            }
+            break;
+    }
+}
+
+void CPU::ROL_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { n_cycles++; break; }
+        case 3: { ie_zpxy<3>(X); break; }
+        case 4: { data = read(effective_addr); n_cycles++; break; }
+        case 5:
+            {
+                uint8_t aux = (data >> 7) & 0x01;
+                data <<= 1;
+                data = (data & 0xFE) | (P & 0x01);
+                P = (P & 0xFE) | aux;
+                write(effective_addr, data);
+                n_cycles++;
+                upd_negative_zero_flags(data);
+            }
+            break;               
+    }
+}
+
+
+
+
+void CPU::ROL_abs()
+{
+    uint8_t aux;
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; };
+        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 5:
+            aux = (data >> 7) & 0x01;
+            data <<= 1;
+            data = (data & 0xFE) | (P & 0x01);
+            P = (P  & 0xFE) | (aux & 0x01);
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::ROL_absx()
+{
+    uint8_t aux;
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; }
+        case 2: { ie_absxy<2>(X); break; }
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = ((high_byte ) & 0xff) << 8;
+            l = (low_byte ) & 0xff;
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 6:
+            data = read(effective_addr);
+            aux = (data >> 7) & 0x01;
+            data <<= 1;
+            data = (data & 0xFE) | (P & 0x01);
+            P = (P  & 0xFE) | (aux & 0x01);
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;             
+        }
+}
+
+void CPU::ROR_imm()
+{
+    uint8_t aux = (Accumulator & 0x01); // Get the carry bit
+    Accumulator >>= 1; // Shift right
+    Accumulator = (Accumulator & 0x7F) | ((P & 0x01) << 7); // Insert carry from P
+    P = (P & 0xFE) | aux; // Update the carry in P
+    data = Accumulator;
+    n_cycles++;
+    upd_negative_zero_flags(data);
+}
+
+void CPU::ROR_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2: { ie_zeropage<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; }
+        case 4:
+            {
+                uint8_t aux = data & 0x01;
+                data >>= 1;
+                data = (data & 0x7F) | ((P & 0x01) << 7);
+                P = (P & 0xFE) | aux;
+                write(effective_addr, data);
+                n_cycles++;
+                upd_negative_zero_flags(data);
+            }
+            break;
+    }
+}
+
+void CPU::ROR_zpx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { n_cycles++; break; }
+        case 3: { ie_zpxy<3>(X); break; }
+        case 4: { data = read(effective_addr); n_cycles++; break; }
+        case 5:
+            {
+                uint8_t aux = data & 0x01;
+                data >>= 1;
+                data = (data & 0x7F) | ((P & 0x01) << 7);
+                P = (P & 0xFE) | aux;
+                write(effective_addr, data);
+                n_cycles++;
+                upd_negative_zero_flags(data);
+            }
+            break;               
+    }
+}
+
+void CPU::ROR_abs()
+{
+    uint8_t aux;
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3: { data = read(effective_addr); n_cycles++; break; };
+        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 5:
+            aux = data & 0x01;
+            data >>= 1;
+            data = (data & 0x7F) | ((P & 0x01) << 7);
+            data = data;
+            P = (P & 0xFE) | (aux & 0x01);
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;
+    }
+}
+
+void CPU::ROR_absx()
+{
+    uint8_t aux;
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; }
+        case 2: { ie_absxy<2>(X); break; }
+        case 3:
+            n_cycles++;
+            break;
+        case 4:
+            high_byte = ((0xFF00 & absolute_addr) >> 8);
+            low_byte = 0x00FF & absolute_addr;
+            h = ((high_byte ) & 0xff) << 8;
+            l = (low_byte ) & 0xff;
+            effective_addr = (h | l) + X;
+            data = read(effective_addr);
+            n_cycles++;
+            break;
+        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 6:
+            data = read(effective_addr);
+            aux = data & 0x01;
+            data >>= 1;
+            data = (data & 0x7F) | ((P & 0x01) << 7);
+            data = data;
+            P = (P & 0xFE) | (aux & 0x01);
+            write(effective_addr, data);
+            n_cycles++;
+            upd_negative_zero_flags(data);
+            break;            
+    }
+}
+
+
 //Comparison instructions
 
-void CPU::CMP()
+void CPU::CMP_imm()
 {
-    //Immediate
-    if(opcode == 0xC9)
-    {
-        data = read(PC);
-        CMP_calc(Accumulator);
-        PC++;
-        n_cycles++;      
-    }
+    data = read(PC);
+    CMP_calc(Accumulator);
+    PC++;
+    n_cycles++;
+}
 
-    //Zero page
-    if(opcode == 0xC5)
+void CPU::CMP_zp()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
         {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                CMP_calc(Accumulator);              
-                break;
-            }
-        }       
-    }
-
-    //Zero page, X
-    else if(opcode == 0xD5)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zpxy<1>(X); break; }
-            case 2: { ie_zpxy<2>(X); break; }
-            case 3:
-            {
-                ie_zpxy<3>(X);
-                CMP_calc(Accumulator);
-                break;  
-            }         
-        }        
-    }
-
-    //Absolute
-    else if(opcode == 0xCD)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-            {
-                ie_abs<3>();
-                CMP_calc(Accumulator);
-                break; 
-            }        
-        } 
-    }
-
-    //Absolute, X
-    else if(opcode == 0xDD)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(X); break; }
-            case 2: { ie_absxy<2>(X); break; }
-
-                
-            case 3:
-                ie_absxy<3>(X);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    CMP_calc(Accumulator);
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(X);
-                CMP_calc(Accumulator);
-                break;      
-        }       
-    }
-
-    //Absolute, Y
-    else if(opcode == 0xD9)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_absxy<1>(Y); break; }
-            case 2: { ie_absxy<2>(Y); break; }
-
-                
-            case 3:
-                ie_absxy<3>(Y);
-                //No page crossing, skips cycle 5
-                if(!page_crossing)
-                {
-                    page_crossing = true;
-                    CMP_calc(Accumulator);
-                }
-                break; 
-            //Page crossed 
-            case 4:
-                ie_absxy<4>(Y);
-                CMP_calc(Accumulator);
-                break;      
-        }        
-    }
-
-    //Indirect, X
-    else if(opcode == 0xC1)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_indx<1>(); break;}
-            case 2: { ie_indx<2>(); break;}
-            case 3: { ie_indx<3>(); break;}
-            case 4: { ie_indx<4>(); break;}
-            case 5:
-            {
-                ie_indx<5>();
-                CMP_calc(Accumulator);
-                break;
-            }
+            ie_zeropage<2>();
+            CMP_calc(Accumulator);
+            break;
         }
     }
+}
 
-    //Indirect, Y
-    else if(opcode == 0xD1)
+void CPU::CMP_zpx()
+{
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zpxy<1>(X); break; }
+        case 2: { ie_zpxy<2>(X); break; }
+        case 3:
         {
-            case 1: { ie_indy<1>(); break; }
-            case 2: { ie_indy<2>(); break; }
-            case 3: { ie_indy<3>(); break; }             
-            case 4:
+            ie_zpxy<3>(X);
+            CMP_calc(Accumulator);
+            break;  
+        }
+    }
+}
+
+void CPU::CMP_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3:
+        {
+            ie_abs<3>();
+            CMP_calc(Accumulator);
+            break; 
+        }        
+    }
+}
+
+void CPU::CMP_absx()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_absxy<1>(X); break; }
+        case 2: { ie_absxy<2>(X); break; }
+        case 3:
+            ie_absxy<3>(X);
+            // No page crossing, skips cycle 5
+            if (!page_crossing)
             {
-                ie_indy<4>();
-                if(!page_crossing)
-                {
-                    CMP_calc(Accumulator);
-                    page_crossing = true;
-                }
-                break; 
-            }
-            case 5:
-            {
-                ie_indy<5>();
+                page_crossing = true;
                 CMP_calc(Accumulator);
-                break; 
             }
-        }      
+            break; 
+        // Page crossed 
+        case 4:
+            ie_absxy<4>(X);
+            CMP_calc(Accumulator);
+            break;      
     }
 }
-void CPU::CPX()
+
+void CPU::CMP_absy()
 {
-    //Immediate
-    if(opcode == 0xE0)
+    switch(n_cycles)
     {
-        data = read(PC);
-        CMP_calc(X);
-        PC++;
-        n_cycles++;   
-    }
-
-    //Zero page
-    if(opcode == 0xE4)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
+        case 1: { ie_absxy<1>(Y); break; }
+        case 2: { ie_absxy<2>(Y); break; }
+        case 3:
+            ie_absxy<3>(Y);
+            // No page crossing, skips cycle 5
+            if (!page_crossing)
             {
-                ie_zeropage<2>();
-                CMP_calc(X);              
-                break;
+                page_crossing = true;
+                CMP_calc(Accumulator);
             }
-        }       
-    }
-
-    //Absolute
-    else if(opcode == 0xEC)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-            {
-                ie_abs<3>();
-                CMP_calc(X);
-                break; 
-            }        
-        } 
+            break; 
+        // Page crossed 
+        case 4:
+            ie_absxy<4>(Y);
+            CMP_calc(Accumulator);
+            break;      
     }
 }
-void CPU::CPY()
+
+void CPU::CMP_indx()
 {
-     //Immediate
-    if(opcode == 0xC0)
+    switch(n_cycles)
     {
-        data = read(PC);
-        CMP_calc(Y);
-        PC++;
-        n_cycles++;   
-    }
-
-    //Zero page
-    if(opcode == 0xC4)
-    {
-        switch(n_cycles)
+        case 1: { ie_indx<1>(); break; }
+        case 2: { ie_indx<2>(); break; }
+        case 3: { ie_indx<3>(); break; }
+        case 4: { ie_indx<4>(); break; }
+        case 5:
         {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                CMP_calc(Y);              
-                break;
-            }
-        }       
-    }
-
-    //Absolute
-    else if(opcode == 0xCC)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-
-            case 3:
-            {
-                ie_abs<3>();
-                CMP_calc(Y);
-                break; 
-            }        
-        } 
+            ie_indx<5>();
+            CMP_calc(Accumulator);
+            break;
+        }
     }
 }
+
+void CPU::CMP_indy()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_indy<1>(); break; }
+        case 2: { ie_indy<2>(); break; }
+        case 3: { ie_indy<3>(); break; }             
+        case 4:
+        {
+            ie_indy<4>();
+            if (!page_crossing)
+            {
+                CMP_calc(Accumulator);
+                page_crossing = true;
+            }
+            break; 
+        }
+        case 5:
+        {
+            ie_indy<5>();
+            CMP_calc(Accumulator);
+            break; 
+        }
+    }
+}
+
+void CPU::CPX_imm()
+{
+    data = read(PC);
+    CMP_calc(X);
+    PC++;
+    n_cycles++;
+}
+
+void CPU::CPX_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
+        {
+            ie_zeropage<2>();
+            CMP_calc(X);              
+            break;
+        }
+    }
+}
+
+void CPU::CPX_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+
+        case 3:
+        {
+            ie_abs<3>();
+            CMP_calc(X);
+            break; 
+        }        
+    }
+}
+
+void CPU::CPY_imm()
+{
+    data = read(PC);
+    CMP_calc(Y);
+    PC++;
+    n_cycles++;
+}
+
+void CPU::CPY_zp()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
+        {
+            ie_zeropage<2>();
+            CMP_calc(Y);              
+            break;
+        }
+    }
+}
+
+void CPU::CPY_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+
+        case 3:
+        {
+            ie_abs<3>();
+            CMP_calc(Y);
+            break; 
+        }        
+    }
+}
+
 
 //Conditional Branch Instructions
 
@@ -3064,43 +3154,37 @@ void CPU::BVS()
 
 //Jumps &CPU:: Subroutines
 
-
-void CPU::JMP()
+void CPU::JMP_abs()
 {
-
-    //Absolute
-    if(opcode == 0x4C)
+    switch(n_cycles)
     {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2:  
+        case 1: { ie_abs<1>(); break; }
+        case 2:  
             ie_abs<2>();
             PC = effective_addr; 
             break; 
-        }
     }
-
-    else
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-                jmp_address = 0x0000;
-                jmp_address |= read(effective_addr);
-                n_cycles++;
-                break;
-            case 4:
-                jmp_address |= (read((effective_addr & 0xFF00) | (uint8_t)((effective_addr & 0x00FF) + 1)) << 8);
-                PC = jmp_address;
-                n_cycles++;
-                break;            
-        }
-    }
-    
 }
+
+void CPU::JMP_ind()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3:
+            jmp_address = 0x0000;
+            jmp_address |= read(effective_addr);
+            n_cycles++;
+            break;
+        case 4:
+            jmp_address |= (read((effective_addr & 0xFF00) | (uint8_t)((effective_addr & 0x00FF) + 1)) << 8);
+            PC = jmp_address;
+            n_cycles++;
+            break;            
+    }
+}
+
 void CPU::JSR()
 {
     switch(n_cycles)
@@ -3243,52 +3327,41 @@ void CPU::RTI()
 
 //Other
 
-void CPU::BIT()
+void CPU::BIT_zp()
 {
-    uint8_t aux;
-
-    //Zero Page
-    if(opcode == 0x24)
+    switch(n_cycles)
     {
-        switch(n_cycles)
+        case 1: { ie_zeropage<1>(); break; }
+        case 2:
         {
-            case 1: { ie_zeropage<1>(); break; }
-            case 2:
-            {
-                ie_zeropage<2>();
-                aux = data & Accumulator;
-                if (aux == 0x00)
-                    P = P | 0x02;
-                else
-                    P =  P  & 0xFD;
-                P = (P  & 0x7F) | (data & 0x80);
-                P = (P  & 0xBF) | (data & 0x40);
-                break;
-            }
-        }       
-    }
-    //Absolute
-    else if(opcode == 0x2C)
-    {
-        switch(n_cycles)
-        {
-            case 1: { ie_abs<1>(); break; }
-            case 2: { ie_abs<2>(); break; }
-            case 3:
-            {
-                ie_abs<3>();
-                aux = data & Accumulator;
-                if (aux == 0x00)
-                    P = P | 0x02;
-                else
-                    P =  P  & 0xFD;
-                P = (P  & 0x7F) | (data & 0x80);
-                P = (P  & 0xBF) | (data & 0x40);
-                break; 
-            }       
-        } 
+            ie_zeropage<2>();
+            uint8_t aux = data & Accumulator;
+            P = (aux == 0x00) ? (P | 0x02) : (P & 0xFD);
+            P = (P & 0x7F) | (data & 0x80);
+            P = (P & 0xBF) | (data & 0x40);
+            break;
+        }
     }
 }
+
+void CPU::BIT_abs()
+{
+    switch(n_cycles)
+    {
+        case 1: { ie_abs<1>(); break; }
+        case 2: { ie_abs<2>(); break; }
+        case 3:
+        {
+            ie_abs<3>();
+            uint8_t aux = data & Accumulator;
+            P = (aux == 0x00) ? (P | 0x02) : (P & 0xFD);
+            P = (P & 0x7F) | (data & 0x80);
+            P = (P & 0xBF) | (data & 0x40);
+            break; 
+        }       
+    }
+}
+
 void CPU::NOP()
 {
     n_cycles++;
@@ -3384,4 +3457,58 @@ void CPU::soft_reset()
     // Reset internal memory without altering its size
     std::fill(std::begin(memory), std::end(memory), 0);
 }
+
+bool CPU::open_file(std::string name)
+{
+    std::ifstream f(name);
+    bool ok = true;
+    if(!f.is_open())
+    {
+        ok = false;
+        std::cerr<< "Hubo un error";
+    }
+    f >> json_data;
+    f.close();
+    return ok;  
+}
+void CPU::load(int line)
+{
+    PC = json_data[line]["initial"]["pc"];
+    Accumulator = json_data[line]["initial"]["a"];
+    X = json_data[line]["initial"]["x"];
+    Y = json_data[line]["initial"]["y"];
+    SP = json_data[line]["initial"]["s"];
+    P = json_data[line]["initial"]["p"];
+    for(int i = 0; i < (int)json_data[line]["initial"]["ram"].size(); i++)       
+        write((uint16_t)json_data[line]["initial"]["ram"][i][0], (uint8_t)json_data[line]["initial"]["ram"][i][1]);    
+}
+bool CPU::finished()
+{
+    bool aux = finish;
+    finish = false;
+    return aux;
+}
+bool CPU::compare(int line)
+{
+    bool ok = true;
+   
+    ok &= ((int)PC == json_data[line]["final"]["pc"]);
+    ok &= ((int)Accumulator == json_data[line]["final"]["a"]);
+    ok &= ((int)X == json_data[line]["final"]["x"]);
+    ok &= ((int)Y == json_data[line]["final"]["y"]);
+    ok &= ((int)SP == json_data[line]["final"]["s"]);
+    ok &= ((int)P == json_data[line]["final"]["p"]);
+    for(int i = 0; i < (int)json_data[line]["final"]["ram"].size(); i++)
+        ok &= read((uint16_t)json_data[line]["final"]["ram"][i][0]) == (uint8_t)json_data[line]["final"]["ram"][i][1];
+    if (!ok)
+    {
+        std::cout << "PC: "<< (int)PC << std::endl;
+        std::cout << "Acc: "<< (int)Accumulator<< std::endl;
+        std::cout << "X: "<< (int)X<< std::endl;
+        std::cout << "Y: "<< (int)Y<< std::endl;
+        std::cout << "SP: "<< (int)SP<< std::endl;
+        std::cout << "P: "<< (int)P<< std::endl;
+    }
+    return ok;
+} 
 
