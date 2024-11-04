@@ -7,6 +7,8 @@
 #include "Bus.h"
 #include "nfd.h"
 #include <filesystem>
+#include <chrono>
+#include <thread>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
@@ -38,7 +40,7 @@ class SDL_manager
             }
 
             // Create the renderer with hardware acceleration
-            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
             if (!renderer)
             {
                 std::cerr << "Failed to create renderer: " << SDL_GetError() << std::endl;
@@ -199,6 +201,11 @@ SDL_Renderer* sprite_renderer;
 
 int padding;
 
+int desired_fps = 60;
+double frame_time = (1000.0 / desired_fps);
+bool show_fps = false;
+int FPS;
+
 int main(int argc, char *argv[])
 {
     NES nes;
@@ -217,6 +224,9 @@ int main(int argc, char *argv[])
     SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
     screenBuffer = SDL_CreateTexture(manager.get_renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
+    auto last_time = std::chrono::high_resolution_clock::now();
+    int frame_count = 0;
+
     while (running) 
     {
         handle_events(&nes, running, &manager);
@@ -226,26 +236,50 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255); // Clear to black
         SDL_RenderClear(manager.get_renderer());
 
+        auto a = SDL_GetTicks64();
+
         if(nes.is_game_loaded())
         {
             nes.run_frame();
             draw_frame(nes.get_ppu(), manager.get_renderer());
         }
+
+        auto b = SDL_GetTicks64();
+        double elapsed = b - a;
+
         handle_imGui(&nes, running, manager.get_renderer());
         SDL_RenderPresent(manager.get_renderer());
+
+        if (elapsed < frame_time)
+        {
+            SDL_Delay(frame_time - elapsed);
+        }
+
+        auto current_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_seconds = current_time - last_time;
+        
+        frame_count++;
+        if (elapsed_seconds.count() >= 1.0)
+        {
+            FPS = frame_count;
+            frame_count = 0;
+            last_time = current_time;
+        }
     }
 
-    cleanupImGui();
     SDL_DestroyRenderer(nametable_renderer);
     SDL_DestroyRenderer(pattern_renderer);
     SDL_DestroyRenderer(sprite_renderer);
     SDL_DestroyWindow(nametable_window);
     SDL_DestroyWindow(pattern_window);
     SDL_DestroyWindow(sprite_window);
+    cleanupImGui();
     destroy_textures();
 
     return 0;
 }
+
+
 
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
 {
@@ -402,6 +436,7 @@ void cleanupImGui()
 
 void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
 {
+
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) 
@@ -435,12 +470,73 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                 if(nes->is_game_loaded())
                     nes->reload_game();
             }
+            ImGui::EndMenu();
+        }
 
+        if(ImGui::BeginMenu("Settings"))
+        {
             if(ImGui::MenuItem("Alternate region (NTSC/PAL)", "O"))
             {
                 if(nes->is_game_loaded())
                     nes->change_timing();
             }
+
+            if(ImGui::BeginMenu("Speed"))
+            {
+                if(ImGui::MenuItem("Normal"))
+                {
+                    desired_fps = 60;
+                    frame_time = (1000.0 / desired_fps);
+                }
+
+                if(ImGui::MenuItem("Increase speed"))
+                {
+                    if(desired_fps < 300 && frame_time)
+                    {
+                        desired_fps += 30;
+                        frame_time = (1000.0 / desired_fps);
+                    }
+                }
+
+                if(ImGui::MenuItem("Decrease speed"))
+                {
+                    if(desired_fps > 30)
+                    {
+                        if(frame_time == 0)
+                            desired_fps = 60;
+                        else
+                            desired_fps -= 30;
+                        frame_time = (1000.0 / desired_fps);
+                    }
+                }
+
+                if(ImGui::MenuItem("Maximum speed"))
+                {
+                    frame_time = 0.0;
+                }
+                ImGui::Separator();
+
+                if(ImGui::MenuItem("Double speed"))
+                {
+                    desired_fps = 120;
+                    frame_time = (1000.0 / desired_fps);
+                }  
+
+                if(ImGui::MenuItem("Half speed"))
+                {
+                    desired_fps = 30;
+                    frame_time = (1000.0 / desired_fps);
+                }               
+
+                ImGui::Separator();
+
+                if(ImGui::MenuItem("Show FPS"))
+                {
+                    show_fps = !show_fps;
+                }       
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -451,7 +547,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                 if(nametable_window == nullptr && nes->is_game_loaded())
                 {
                     nametable_window = SDL_CreateWindow("Nametable viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
-                    nametable_renderer = SDL_CreateRenderer(nametable_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    nametable_renderer = SDL_CreateRenderer(nametable_window, -1, SDL_RENDERER_ACCELERATED);
                     nametableBuffer0 = SDL_CreateTexture(nametable_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
                     nametableBuffer1 = SDL_CreateTexture(nametable_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
                 }
@@ -462,7 +558,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                 if(pattern_window == nullptr && nes->is_game_loaded())
                 {
                     pattern_window = SDL_CreateWindow("Pattern table viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 240, 0);
-                    pattern_renderer = SDL_CreateRenderer(pattern_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    pattern_renderer = SDL_CreateRenderer(pattern_window, -1, SDL_RENDERER_ACCELERATED);
                     patternBuffer0 = SDL_CreateTexture(pattern_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
                     patternBuffer1 = SDL_CreateTexture(pattern_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
                     draw_pattern_table(nes->get_ppu());
@@ -474,7 +570,7 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                 if(sprite_window == nullptr && nes->is_game_loaded())
                 {
                     sprite_window = SDL_CreateWindow("Sprite viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 256, 240, 0);
-                    sprite_renderer = SDL_CreateRenderer(sprite_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    sprite_renderer = SDL_CreateRenderer(sprite_window, -1, SDL_RENDERER_ACCELERATED);
                     spriteBuffer = SDL_CreateTexture(sprite_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 64);
                 }
             }
@@ -482,7 +578,17 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
         }
 
         ImGui::EndMainMenuBar();
-    } 
+    }
+
+    if(show_fps)
+    {
+        ImGui::SetNextWindowPos(ImVec2(SCREEN_WIDTH - 80, ImGui::GetFrameHeight())); // Set position to top-left corner
+        ImGui::Begin("Label Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f)); // White color
+        ImGui::Text(("FPS: " + std::to_string(FPS)).c_str());
+        ImGui::PopStyleColor(); // Restore the previous text color
+        ImGui::End();
+    }
 
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
