@@ -65,13 +65,14 @@ void Cartridge::new_instruction()
     mapper->new_instruction();
 }
 
-bool Cartridge::load_game(const std::string filename)
+bool Cartridge::load_game(const std::string filename, std::string& log)
 {
+    bool ok = true;
     std::ifstream file(filename, std::ios::binary | std::ios::in);
     if (!file.is_open())
     {
-        std::cerr << "Error: Could not open file " << filename << std::endl;
-        return false;
+        log =   std::string("Error: Could not open file ") + filename;
+        ok = false;
     }
 
     try
@@ -79,8 +80,8 @@ bool Cartridge::load_game(const std::string filename)
         // Read header
         if (!file.read(reinterpret_cast<char*>(&header), sizeof(header)))
         {
-            std::cerr << "Error: Failed to read header in " << filename << std::endl;
-            return false;
+            log =   std::string("Error: Failed to read header in ") + filename;
+            ok = false;
         }
 
         // Check format
@@ -112,8 +113,8 @@ bool Cartridge::load_game(const std::string filename)
         // Read PRG-ROM
         if (!file.read(reinterpret_cast<char*>(PRG_ROM.data()), PRG_ROM.size()))
         {
-            std::cerr << "Error: Failed to read PRG-ROM in " << filename << std::endl;
-            return false;
+            log =  std::string("Error: Failed to read PRG-ROM in ") + filename;
+            ok = false;
         }
 
         // Read CHR-ROM
@@ -121,8 +122,8 @@ bool Cartridge::load_game(const std::string filename)
         {
             if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), chr_size))
             {
-                std::cerr << "Error: Failed to read CHR-ROM in " << filename << std::endl;
-                return false;
+                log =  std::string("Error: Failed to read CHR-ROM in ") + filename;
+                ok = false;
             }
         }
 
@@ -136,18 +137,21 @@ bool Cartridge::load_game(const std::string filename)
             case 1: mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
             case 7: mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
             default:
-                std::cerr << "Error: Unsupported mapper ID " << mapper_id << std::endl;
-                return false;
+                log = std::string("Error: Unsupported mapper ID ") + std::to_string((int)mapper_id);
+                ok =  false;
         }
 
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Exception: " << e.what() << std::endl;
-        return false;
+        log = std::string("Exception: ") +  std::string(e.what());
+        ok =  false;
     }
 
-    return true;
+    if(ok)
+        log = filename;
+
+    return ok;
 }
 
 

@@ -85,13 +85,21 @@ class NES
 
         bool load_game(std::string filename)
         {
-            if(std::filesystem::path(filename).extension().string() == ".nes")
+            std::string extension = std::filesystem::path(filename).extension().string();
+            if(extension == ".nes" || extension == ".NES")
             {
                 old_game_filename = filename;           
                 reset();
-                if(cart->load_game(filename))
+                if(cart->load_game(filename, log))
                     game_loaded = true;
+                if(std::filesystem::is_regular_file(log))
+                {
+                    log = std::filesystem::path(log).stem().string();
+                }
             }
+
+            else
+                log = std::string("File does not have .nes extension");
 
             return game_loaded;
         }
@@ -161,12 +169,18 @@ class NES
             game_loaded = false;
             ppu_accumulator = 0;
             pause = false;
+            log = "";
         }
 
         void reload_game()
         {
             reset();
             load_game(old_game_filename);
+        }
+
+        std::string get_log()
+        {
+            return log;
         }
 
 
@@ -183,6 +197,7 @@ class NES
         bool game_loaded = false;
         std::string old_game_filename;
         bool log_cpu = false;
+        std::string log;
 
 };
 
@@ -221,6 +236,11 @@ bool show_fps = false;
 int FPS;
 int padding;
 
+bool showWindow = false;
+float windowDuration = 3.0f;  // Time in seconds to fully display the window
+float fadeDuration = 0.25f;    // Time in seconds for the fade-out effect
+std::chrono::time_point<std::chrono::steady_clock> windowStartTime;
+
 using namespace std::chrono;
 
 int main(int argc, char *argv[])
@@ -233,6 +253,8 @@ int main(int argc, char *argv[])
     {
         std::string filename(argv[1]);
         nes.load_game(filename);
+        showWindow = true;
+        windowStartTime =  std::chrono::steady_clock::now();
     }
 
     initImGui(manager.get_window(), manager.get_renderer());
@@ -448,6 +470,8 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
             frame_time = (1000.0 / desired_fps);
             std::string filename(event.drop.file);
             nes->load_game(filename);
+            showWindow = true;
+            windowStartTime =  std::chrono::steady_clock::now();
             SDL_free(event.drop.file);
         }
     }   
@@ -485,6 +509,8 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                     desired_fps = 60;
                     frame_time = (1000.0 / desired_fps);
                     nes->load_game(outPath);
+                    showWindow = true;
+                    windowStartTime =  std::chrono::steady_clock::now();
                     free(outPath);
                 }     
             }
@@ -626,6 +652,30 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
         ImGui::Begin("Label Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f)); // White color
         ImGui::Text(("FPS: " + std::to_string(FPS)).c_str());
+        ImGui::PopStyleColor(); // Restore the previous text color
+        ImGui::End();
+    }
+
+    if(showWindow)
+    {
+        float elapsedTime = std::chrono::duration<float>(std::chrono::steady_clock::now() - windowStartTime).count();
+
+        float alpha = 1.0f;
+        if (elapsedTime > windowDuration) {
+            float fadeElapsed = elapsedTime - windowDuration;
+            alpha = 1.0f - (fadeElapsed / fadeDuration);
+
+            if (alpha <= 0.0f) {
+                alpha = 0.0f;
+                showWindow = false;
+            }
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(10, SCREEN_HEIGHT -  30));
+        ImGui::SetNextWindowBgAlpha(alpha);
+        ImGui::Begin("Fading Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f)); // White color
+        ImGui::Text(nes->get_log().c_str());
         ImGui::PopStyleColor(); // Restore the previous text color
         ImGui::End();
     }

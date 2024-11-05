@@ -22,7 +22,7 @@ class Cartridge
         void cpu_writes(uint16_t address, uint8_t value);
         void new_instruction();
 
-        bool load_game(std::string filename);
+        bool load_game(std::string filename, std::string& log);
         void soft_reset();
        
     private:
