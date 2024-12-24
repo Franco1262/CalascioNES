@@ -50,10 +50,13 @@ class PPU
         void draw_sprite_pixel();
         void check_sprite_0_hit();
         void set_ppu_timing(uint8_t);
+        void check_target_hit(int x, int y);
+        void set_zapper(bool zapper);
 
         void sprite_evaluation();
 
         ScanlineType get_scanline_type();
+        void is_pixel_bright(int x, int y);
     private:
         //PPU Registers
         uint8_t PPUCTRL;
@@ -163,4 +166,7 @@ class PPU
         bool ppu_timing;
         uint8_t open_bus;
         bool supress = false;
+
+        int zapper_x, zapper_y;
+        bool zapper_connected = false;
 };

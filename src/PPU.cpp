@@ -1018,10 +1018,9 @@ void PPU::tick()
         if(!supress)
             PPUSTATUS |= 0x80;
         if((PPUCTRL & 0x80) && (PPUSTATUS & 0x80))
-            bus->set_nmi(true);
-         
-        frame = !frame;
-    }  
+            bus->set_nmi(true);  
+        frame = !frame;   
+    } 
 
     cycles++;
     if(cycles == 341)
@@ -1040,6 +1039,32 @@ void PPU::tick()
                 cycles = 1;
             odd ^= 1;
         }
+        if(zapper_connected)
+            is_pixel_bright(zapper_x, zapper_y);
     }
 }
 
+void PPU::is_pixel_bright(int x, int y)
+{
+    bool ok = false;
+    uint32_t pixel = screen[(y * 256) + x];
+    if(pixel == system_palette[0x20])
+        ok = true;
+    for(int i = 0x31 ; i <= 0x3C; i++)
+    {
+        if(pixel == system_palette[i])
+            ok = true;
+    }
+    bus->set_light_sensed(ok);
+}
+
+void PPU::check_target_hit(int x, int y)
+{
+    zapper_x = x;
+    zapper_y = y;
+}
+
+void PPU::set_zapper(bool zapper)
+{
+    zapper_connected = zapper;
+}

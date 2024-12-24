@@ -31,22 +31,32 @@ uint8_t Bus::cpu_reads(uint16_t address)
                 data = shift_register_controller1 & 1;
                 shift_register_controller1 >>= 1;
             }
-
-            // Set the top three bits to 0x40 to retain high-byte behavior
             data |= 0x40;
         }
+
         else if (address == 0x4017)
         {
-            if (strobe)
+            if(zapper_connected)
+            {
+                data = shift_register_controller2;
+                zapper.light_sensed = 1;
+            }
+                       
+            else if (strobe)
                 data = (controller_state >> 8) & 1;
+
             else
             {
                 // Shift out the button states
                 data = shift_register_controller2 & 1;
                 shift_register_controller2 >>= 1;
+                if(zapper_connected && data == 0x00)
+                {
+                    zapper.trigger = 1;
+                }
+                
             }
-
-            // Set the top three bits to 0x40
+            
             data |= 0x40;
         }
     }
@@ -70,7 +80,6 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
             strobe = value & 1;
             if (strobe)
             {
-                handle_input = true;
 
                 const uint8_t *keystate = SDL_GetKeyboardState(NULL);
 
@@ -102,36 +111,40 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
                     state &= ~(1 << 7);  // Clear Right
                 }
 
-                // Second controller's button mappings
-                if (keystate[SDL_SCANCODE_Y])  state |= 1 << 8;  // A button
-                if (keystate[SDL_SCANCODE_T])  state |= 1 << 9;  // B button
-                if (keystate[SDL_SCANCODE_G])  state |= 1 << 10; // Select
-                if (keystate[SDL_SCANCODE_H])  state |= 1 << 11; // Start
+                if(!zapper_connected)
+                {
+                    // Second controller's button mappings
+                    if (keystate[SDL_SCANCODE_Y])  state |= 1 << 8;  // A button
+                    if (keystate[SDL_SCANCODE_T])  state |= 1 << 9;  // B button
+                    if (keystate[SDL_SCANCODE_G])  state |= 1 << 10; // Select
+                    if (keystate[SDL_SCANCODE_H])  state |= 1 << 11; // Start
 
-                // Up and Down for the second controller
-                if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up
-                if (keystate[SDL_SCANCODE_DOWN])  state |= 1 << 13;  // Down
-                if (keystate[SDL_SCANCODE_LEFT])  state |= 1 << 14;  // Left
-                if (keystate[SDL_SCANCODE_RIGHT]) state |= 1 << 15;  // Right
+                    // Up and Down for the second controller
+                    if (keystate[SDL_SCANCODE_UP])    state |= 1 << 12;  // Up
+                    if (keystate[SDL_SCANCODE_DOWN])  state |= 1 << 13;  // Down
+                    if (keystate[SDL_SCANCODE_LEFT])  state |= 1 << 14;  // Left
+                    if (keystate[SDL_SCANCODE_RIGHT]) state |= 1 << 15;  // Right
 
-                // Reset state for Up and Down on the second controller if both are pressed
-                if (keystate[SDL_SCANCODE_UP] && keystate[SDL_SCANCODE_DOWN]) {
-                    state &= ~(1 << 12);  // Clear Up
-                    state &= ~(1 << 13);  // Clear Down
+                    // Reset state for Up and Down on the second controller if both are pressed
+                    if (keystate[SDL_SCANCODE_UP] && keystate[SDL_SCANCODE_DOWN]) {
+                        state &= ~(1 << 12);  // Clear Up
+                        state &= ~(1 << 13);  // Clear Down
+                    }
+
+                    // Reset state for Left and Right on the second controller if both are pressed
+                    if (keystate[SDL_SCANCODE_LEFT] && keystate[SDL_SCANCODE_RIGHT]) {
+                        state &= ~(1 << 14);  // Clear Left
+                        state &= ~(1 << 15);  // Clear Right
+                    }
+                    shift_register_controller2 = (state >> 8) & 0xFF;
                 }
-
-                // Reset state for Left and Right on the second controller if both are pressed
-                if (keystate[SDL_SCANCODE_LEFT] && keystate[SDL_SCANCODE_RIGHT]) {
-                    state &= ~(1 << 14);  // Clear Left
-                    state &= ~(1 << 15);  // Clear Right
-                }
-
+      
                 // Update shift registers
                 shift_register_controller1 = state & 0xFF;
-                shift_register_controller2 = (state >> 8) & 0xFF;
             }    
         }
     }
+
     else if ((address >= 0x4020) && (address <= 0xFFFF))
         cart->cpu_writes(address, value);
 }
@@ -177,4 +190,33 @@ void Bus::soft_reset()
 {
     NMI = false;
     shift_register_controller1 = shift_register_controller2 = 0x0000;
+}
+
+void Bus::set_zapper(bool zapper)
+{
+    zapper_connected = zapper;
+    ppu->set_zapper(zapper);
+}
+
+void Bus::update_zapper_coordinates(int x, int y)
+{
+    zapper.x = x;
+    zapper.y = y;
+
+    zapper.trigger = 1;
+    shift_register_controller2 &= 0xE6;
+    shift_register_controller2 |= (zapper.trigger << 4);
+}
+
+void Bus::fire_zapper()
+{
+    zapper.trigger = 0;
+    shift_register_controller2 = (shift_register_controller2 & ~(1 << 4)) | (zapper.trigger << 4);
+    ppu->check_target_hit(zapper.x, zapper.y);
+}
+
+void Bus::set_light_sensed(bool hit)
+{
+    zapper.light_sensed = !hit;
+    shift_register_controller2 = (shift_register_controller2 & ~(1 << 3)) | (zapper.light_sensed << 3);
 }

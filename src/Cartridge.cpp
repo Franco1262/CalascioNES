@@ -118,11 +118,23 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         }
 
         // Read CHR-ROM
-        if (n_chr_rom_banks > 0)
-        {
-            if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), chr_size))
-            {
-                log =  std::string("Error: Failed to read CHR-ROM in ") + filename;
+        if (n_chr_rom_banks > 0) {
+            // Get current position in the file
+            std::streampos current_pos = file.tellg();
+
+            // Move to the end to calculate remaining size
+            file.seekg(0, std::ios::end);
+            std::streamsize remaining_size = file.tellg() - current_pos;
+
+            // Move back to the original position
+            file.seekg(current_pos, std::ios::beg);
+
+            // Resize CHR_ROM if necessary
+            CHR_ROM.resize(static_cast<size_t>(remaining_size));
+
+            // Read the remaining data
+            if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), remaining_size)) {
+                log = std::string("Error: Failed to read CHR-ROM in ") + filename;
                 ok = false;
             }
         }

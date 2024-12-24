@@ -8,6 +8,15 @@ class PPU;
 class CPU;
 class Cartridge;
 
+struct Zapper
+{
+    bool trigger = 0;
+    bool light_sensed = 1;
+    int x;
+    int y;
+
+};
+
 class Bus
 {
     public:
@@ -29,6 +38,10 @@ class Bus
 
         void set_input(uint16_t state);
         bool get_input();
+        void set_zapper(bool);
+        void update_zapper_coordinates(int x, int y);
+        void fire_zapper();
+        void set_light_sensed(bool hit);
 
         void soft_reset();
     private:
@@ -39,8 +52,9 @@ class Bus
         uint16_t controller_state;
         uint16_t shift_register_controller1;
         uint16_t shift_register_controller2;
+        bool zapper_connected = false;
         bool handle_input;
         bool strobe;
 
-
+        Zapper zapper;
 };

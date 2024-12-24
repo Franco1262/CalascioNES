@@ -178,6 +178,27 @@ class NES
             load_game(old_game_filename);
         }
 
+        void alternate_zapper()
+        {
+            zapper_connected = !zapper_connected;
+            bus->set_zapper(zapper_connected);
+        }
+
+        bool get_zapper()
+        {
+            return zapper_connected;
+        }
+
+        void send_mouse_coordinates(int x, int y)
+        {
+            bus->update_zapper_coordinates(x, y);
+        }
+
+        void fire_zapper()
+        {
+            bus->fire_zapper();
+        }
+
         std::string get_log()
         {
             return log;
@@ -198,6 +219,7 @@ class NES
         std::string old_game_filename;
         bool log_cpu = false;
         std::string log;
+        bool zapper_connected = false;
 
 };
 
@@ -464,6 +486,7 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
                 default: break;
             }
         }
+
         else if(event.type == SDL_DROPFILE)
         {
             desired_fps = 60;
@@ -473,6 +496,20 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
             showWindow = true;
             windowStartTime =  std::chrono::steady_clock::now();
             SDL_free(event.drop.file);
+        }
+
+        else if ((event.type == SDL_MOUSEBUTTONUP) && nes->get_zapper()) 
+        {
+            nes->fire_zapper();
+        }
+
+        else if((event.type == SDL_MOUSEBUTTONDOWN) && nes->get_zapper())
+        {
+            // Get the mouse coordinates on release
+            int x = event.button.x;
+            int y = event.button.y - ImGui::GetFrameHeight();
+
+            nes->send_mouse_coordinates(int(x / SCALE), int(y / SCALE));
         }
     }   
 }
@@ -574,6 +611,12 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                             desired_fps -= 30;
                         frame_time = (1000.0 / desired_fps);
                     }
+
+                    else 
+                    {
+                        desired_fps = floor(desired_fps / 2);
+                        frame_time = 1000.0 / desired_fps;
+                    }
                 }
 
                 if(ImGui::MenuItem("Maximum speed"))
@@ -601,6 +644,11 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
                     show_fps = !show_fps;
                 }       
                 ImGui::EndMenu();
+            }
+
+            if(ImGui::MenuItem("Zapper"))
+            {
+                nes->alternate_zapper();
             }
 
             ImGui::EndMenu();
