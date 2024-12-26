@@ -55,6 +55,19 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 
 For games that support the Zapper, simply click on "Settings" and then enable the Zapper. Once enabled, you can use it by left-clicking your mouse. 
 
+## Dependencies
+
+This project relies on the following libraries to build and run correctly:
+
+### [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.10)
+A powerful multimedia library used for handling graphics, input, and audio. It provides the foundation for rendering and user input in this emulator.
+
+### [ImGui](https://github.com/ocornut/imgui)
+A bloat-free graphical user interface (GUI) library used to create in-game menus and debugging interfaces.
+
+### [nativefiledialog](https://github.com/mlabbe/nativefiledialog)
+A lightweight library used for opening file dialogs, providing cross-platform file selection capabilities for loading and saving files.
+
 ## Compiling (TODO)
 
 ## Extra Notes
