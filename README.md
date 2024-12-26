@@ -38,12 +38,6 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 
 ![image](https://github.com/user-attachments/assets/f555db1d-a293-4058-a9b5-f3efbf6c6f55)
 
-https://github.com/user-attachments/assets/dbe9a602-6a3d-4692-a306-41b55f33361e
-
-
-
-
-
 ## Controller Setup
 
 | Button      | Key  | Description                            |
