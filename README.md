@@ -40,12 +40,12 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 
 ## Controller Setup
 
-| Button      | Key (Numpad) | Description                            |
+| Button      | Key  | Description                            |
 |-------------|--------------|----------------------------------------|
-| A           | 8            | Jump or primary action button          |
-| B           | 7            | Secondary action button                |
-| Start       | 5            | Start the game or pause                |
-| Select      | 4            | Select item in the menu                |
+| A           | 8 (Numpad)           | Jump or primary action button          |
+| B           | 7  (Numpad)          | Secondary action button                |
+| Start       | 5   (Numpad)         | Start the game or pause                |
+| Select      | 4   (Numpad)         | Select item in the menu                |
 | D-Pad (Up)  | W            | Move up in the game                    |
 | D-Pad (Down)| S            | Move down in the game                  |
 | D-Pad (Left)| A            | Move left in the game                  |
