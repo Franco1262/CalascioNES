@@ -25,3 +25,4 @@ This NES emulator, written in C++, is designed as a learning project to explore 
   - [x] Mapper 7 (AxROM)
   - [ ] Mapper 4 (MMC3) Soon
  
+</div>
