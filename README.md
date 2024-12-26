@@ -45,7 +45,8 @@ This NES emulator, written in C++, is designed as a learning project to explore 
 | D-Pad (Left)| A     | Move left in the game                  |
 | D-Pad (Right)| D    | Move right in the game                 |
 
-###Zapper
+###Zapper (Light gun for the nes)
+
 For games implementing the Zapper just click on settings and then click on Zapper. Now the zapper is enabled, to use it just left click on your mouse
 
 
