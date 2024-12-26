@@ -26,14 +26,14 @@ uint8_t Cartridge::ppu_reads(uint16_t address)
 void Cartridge::ppu_writes(uint16_t address, uint8_t value)
 {
     if(n_chr_rom_banks == 0)
-        CHR_RAM[mapper->ppu_reads(address)] = value;
+        CHR_RAM[mapper->ppu_reads(address) & 0x1FFF] = value;
 }
 
 uint8_t Cartridge::cpu_reads(uint16_t address)
 {
     uint8_t data;
     if(address >= 0x6000 && address < 0x8000)
-        data = PRG_RAM[mapper->cpu_reads(address)];
+        data = PRG_RAM[mapper->cpu_reads(address) & 0x7FFF];
 
 
     else if(address >= 0x8000 && address <= 0xFFFF)
@@ -44,9 +44,8 @@ uint8_t Cartridge::cpu_reads(uint16_t address)
 void Cartridge::cpu_writes(uint16_t address, uint8_t value)
 {
     if(address >= 0x6000 && address < 0x8000)
-        PRG_RAM[mapper->cpu_reads(address)] = value;
+        PRG_RAM[mapper->cpu_reads(address) & 0x7FFF] = value;
 
-        //Ver esto luego
     else if(address >= 0x8000 && address <= 0xFFFF)
         mapper->cpu_writes(address, value);  
 }
@@ -106,7 +105,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         if (n_chr_rom_banks > 0)
             CHR_ROM.resize(chr_size);
         else
-            CHR_RAM.resize(NES20Format ? (64 << (header.chr_ram_shift & 0x0F)) : 8192);
+            CHR_RAM.resize(NES20Format ? (64 << (header.chr_ram_shift & 0x0F)) : 0x2000);
 
         PRG_RAM.resize(0x8000);
 
@@ -141,6 +140,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
 
         // Calculate mapper ID and initialize mapper
         mapper_id = (((header.flag6 & 0xF0) >> 4) | (header.flag7 & 0xF0) | ((header.mapper & 0x0F) << 8));
+
         switch (mapper_id)
         {
             case 0: mapper = std::make_unique<NROM>(n_prg_rom_banks, n_chr_rom_banks); break;

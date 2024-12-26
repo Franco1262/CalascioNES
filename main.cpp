@@ -116,8 +116,6 @@ class NES
                     ppu_accumulator -= 1.0;
                 }
                 cpu->tick();
-                if(log_cpu)
-                    std::cout << std::hex <<(int)cpu->get_opcode() << std::endl;
             }      
         }
 
@@ -153,11 +151,6 @@ class NES
         inline std::shared_ptr<CPU> get_cpu()
         {
             return cpu;
-        }
-
-        void set_log_cpu()
-        {
-            log_cpu = !log_cpu;
         }
 
         void reset()
@@ -217,7 +210,6 @@ class NES
         bool pause = false;
         bool game_loaded = false;
         std::string old_game_filename;
-        bool log_cpu = false;
         std::string log;
         bool zapper_connected = false;
 
@@ -478,11 +470,7 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
                     if (nes->is_game_loaded())
                         nes->change_timing();
                     break;
-                case SDL_SCANCODE_U:
-                    nes->set_log_cpu();
-                    break;
-                
-
+                    
                 default: break;
             }
         }
@@ -731,44 +719,3 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 }
-
-
-/*     for (const auto& entry : std::filesystem::directory_iterator("TESTS")) 
-    {
-        if (entry.path().extension() == ".json") {
-            nes.get_cpu()->open_file(entry.path().string());
-            bool test_passed = true;
-            // Test each case in the file
-            for (int i = 0; i < 9999; i++) {
-
-                nes.get_cpu()->load(i);
-
-                // Tick until test is finished
-                while (!nes.get_cpu()->finished()) {
-                    nes.get_cpu()->tick();
-                }
-
-                // Compare the result
-                if (!nes.get_cpu()->compare(i)) {
-                    test_passed = false;
-                    std::cout << "Opcode 0x"
-                              << std::hex << static_cast<int>(nes.get_cpu()->get_opcode())
-                              << " failed in test case " << i 
-                              << " from file " << entry.path().filename().string() 
-                              << std::endl;
-                    break;  // Stop further testing for this opcode if it fails
-                }
-            }
-
-            // After testing all cases for this file, print result
-            if (test_passed) {
-                std::cout << "Opcode 0x"
-                          << std::hex << static_cast<int>(nes.get_cpu()->get_opcode())
-                          << " passed all tests in file " << entry.path().filename().string() 
-                          << std::endl;
-            }
-        }
-    }
-
-    int i;
-    std::cin >> i;  // Wait for user input before closing */

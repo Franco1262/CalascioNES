@@ -842,8 +842,7 @@ void PPU::check_sprite_0_hit()
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
             {
                 if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))               
-                    PPUSTATUS |= 0x40;  // Set sprite 0 hit flag
-                             
+                    PPUSTATUS |= 0x40;  // Set sprite 0 hit flag                            
             }
         }  
     }
