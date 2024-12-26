@@ -49,6 +49,12 @@ This NES emulator, written in C++, is designed as a learning project to explore 
 
 For games implementing the Zapper just click on settings and then click on Zapper. Now the zapper is enabled, to use it just left click on your mouse
 
+## Compiling (TODO)
+
+## Extra notes
+
+As explained in the introduction, this emulator is a personal project for learning and having fun, is far from perfect although you can play with this emulator almost all the games included in the integrated mappers, there are a few exceptions that don't work because these games require a fairly precise timing to work, other games might not work due to inaccuracies elsewhere but as said these are a few exceptions MOST games work.
+
 
 
  
