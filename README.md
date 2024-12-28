@@ -109,6 +109,8 @@ cd nativefiledialog/build/gmake_windows
 make
 ```
 
+Download and move SDL2 to CalascioNES folder
+
 Folder structure should look like this:
 
 ```
