@@ -82,7 +82,7 @@ This guide will walk you through the process of compiling **CalascioNES**.
 Before compiling the project, ensure you have the following dependencies installed:
 
 1. MinGW
-2. **[SDL2](https://www.libsdl.org/)** (for windowing and graphics rendering)
+2. **[SDL2](https://www.libsdl.org/)** (SDL2-devel-2.30.10-mingw.zip)
 3. **[ImGui](https://github.com/ocornut/imgui)** (for GUI elements)
 4. **[NativeFileDialog](https://github.com/mlabbe/nativefiledialog)** (for file dialog support)
 5. Make
