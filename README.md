@@ -118,17 +118,16 @@ CalascioNES/
 ├── NativeFileDialog/     # NativeFileDialog library
 ├── SDL2/                 # SDL2 library
 ├── main.cpp
-├── CPU.cpp
 ├── src/
 │   ├── PPU.cpp
 │   ├── Cartridge.cpp
 │   ├── Bus.cpp
-│   ├── NROM.cpp
+│   ├── CPUU.cpp
 │   ├── UxROM.cpp
 │   ├── CNROM.cpp
 │   ├── SxROM.cpp
-│   └── AxROM.cpp
-└── include/
+│   └── AxROM.cpp ...
+└── include/...
 ```
 
 ## Step 3: Run this command in the cmd
