@@ -74,10 +74,65 @@ A bloat-free graphical user interface (GUI) library used to create in-game menus
 A lightweight library used for opening file dialogs, providing cross-platform file selection capabilities for loading and saving files.
 
 ## Compiling (TODO)
+# CalascioNES Compilation Guide
+
+This guide will walk you through the process of compiling **CalascioNES**.
+
+### Prerequisites
+
+Before compiling the project, ensure you have the following dependencies installed:
+
+1. **MinGW
+2. **[SDL2](https://www.libsdl.org/)** (for windowing and graphics rendering)
+3. **[ImGui](https://github.com/ocornut/imgui)** (for GUI elements)
+4. **[NativeFileDialog](https://github.com/nothings/NativeFileDialog)** (for file dialog support)
+
+### Step 1: Clone the Repository
+
+Clone the repository and navigate into the project folder:
+
+```
+git clone https://github.com/Franco1262/CalascioNES.git 
+cd CalascioNES
+```
+
+### Step 2: Add dependencies
+
+Clone ImGUI and NativeFileDialog into the current folder. Download SDL2 and move it into this folder
+
+Folder structure should look like this:
+
+```
+CalascioNES/
+│
+├── imgui/                # ImGui library
+├── NativeFileDialog/     # NativeFileDialog library
+├── SDL2/                 # SDL2 library
+├── main.cpp
+├── CPU.cpp
+├── src/
+│   ├── PPU.cpp
+│   ├── Cartridge.cpp
+│   ├── Bus.cpp
+│   ├── NROM.cpp
+│   ├── UxROM.cpp
+│   ├── CNROM.cpp
+│   ├── SxROM.cpp
+│   └── AxROM.cpp
+└── include/
+```
+
+### Step 3: Run this command in the cmd
+```
+g++ main.cpp CPU.cpp src/PPU.cpp src/Cartridge.cpp src/Bus.cpp src/NROM.cpp src/UxROM.cpp src/CNROM.cpp src/SxROM.cpp src/AxROM.cpp imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_tables.cpp imgui/imgui_widgets.cpp imgui/backends/imgui_impl_sdl2.cpp imgui/backends/imgui_impl_sdlrenderer2.cpp -L./SDL2-2.30.6/x86_64-w64-mingw32/lib -L./nativefiledialog/build/lib/Release/x64 -lmingw32 -lSDL2main -lSDL2 -lnfd -lcomctl32 -lole32 -luuid -lshell32 -O3 -flto -march=native -fomit-frame-pointer -funroll-loops -I./nativefiledialog/src/include -I./include -I./imgui -I./imgui/backends -I./SDL2-2.30.6/x86_64-w64-mingw32/include/SDL2 -Wall -mwindows -o main.exe
+```
+
 
 ## Extra Notes
 
 As mentioned in the introduction, this emulator is a personal project designed for learning and experimentation. While it is far from perfect, it can successfully run most games that are compatible with the integrated mappers. A few exceptions may not work due to the need for precise timing in some games, while others may encounter issues due to inaccuracies elsewhere. However, the majority of games work as expected.
+
+This emulator was only tested on Windows
 
 
 
