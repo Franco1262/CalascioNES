@@ -85,7 +85,7 @@ Before compiling the project, ensure you have the following dependencies install
 1. **MinGW
 2. **[SDL2](https://www.libsdl.org/)** (for windowing and graphics rendering)
 3. **[ImGui](https://github.com/ocornut/imgui)** (for GUI elements)
-4. **[NativeFileDialog]([https://github.com/mlabbe/nativefiledialog])** (for file dialog support)
+4. **[NativeFileDialog](https://github.com/mlabbe/nativefiledialog)** (for file dialog support)
 
 ### Step 1: Clone the Repository
 
