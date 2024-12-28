@@ -73,7 +73,6 @@ A bloat-free graphical user interface (GUI) library used to create in-game menus
 ### [nativefiledialog](https://github.com/mlabbe/nativefiledialog)
 A lightweight library used for opening file dialogs, providing cross-platform file selection capabilities for loading and saving files.
 
-## Compiling (TODO)
 # CalascioNES Compilation Guide
 
 This guide will walk you through the process of compiling **CalascioNES**.
