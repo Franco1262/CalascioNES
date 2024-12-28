@@ -70,8 +70,9 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
     std::ifstream file(filename, std::ios::binary | std::ios::in);
     if (!file.is_open())
     {
-        log =   std::string("Error: Could not open file ") + filename;
+        log = std::string("Error: Could not open file ") + filename;
         ok = false;
+        return ok;
     }
 
     try
@@ -81,6 +82,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         {
             log =   std::string("Error: Failed to read header in ") + filename;
             ok = false;
+            return ok;
         }
 
         // Check format
@@ -94,7 +96,11 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
 
         // Ignore trainer if present
         if (header.flag6 & 0x4)
-            file.ignore(512);
+        {
+            log = std::string("Error: Games with trainer are not supported");
+            ok = false;
+            return ok;
+        }
 
         // Allocate memory for PRG and CHR ROM
         PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
@@ -114,6 +120,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         {
             log =  std::string("Error: Failed to read PRG-ROM in ") + filename;
             ok = false;
+            return ok;
         }
 
         // Read CHR-ROM
@@ -135,6 +142,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
             if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), remaining_size)) {
                 log = std::string("Error: Failed to read CHR-ROM in ") + filename;
                 ok = false;
+                return ok;
             }
         }
 
@@ -151,6 +159,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
             default:
                 log = std::string("Error: Unsupported mapper ID ") + std::to_string((int)mapper_id);
                 ok =  false;
+                return ok;
         }
 
     }

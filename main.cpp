@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"

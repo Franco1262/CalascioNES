@@ -4,10 +4,6 @@
 #include <fstream>
 #include <memory>
 
-
-#include "nlohmann/json.hpp"
-using json = nlohmann::json;
-
 class Bus;
 class CPU
 {
@@ -67,9 +63,6 @@ class CPU
         uint16_t l = 0x0000;
         
         uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
-
-        json json_data;
-
 
         struct Instruction
         {
