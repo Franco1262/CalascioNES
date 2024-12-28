@@ -81,10 +81,12 @@ This guide will walk you through the process of compiling **CalascioNES**.
 
 Before compiling the project, ensure you have the following dependencies installed:
 
-1. **MinGW
+1. ** MinGW
 2. **[SDL2](https://www.libsdl.org/)** (for windowing and graphics rendering)
 3. **[ImGui](https://github.com/ocornut/imgui)** (for GUI elements)
 4. **[NativeFileDialog](https://github.com/mlabbe/nativefiledialog)** (for file dialog support)
+5. ** Make
+   
 
 ## Step 1: Clone the Repository
 
@@ -96,8 +98,16 @@ cd CalascioNES
 ```
 
 ## Step 2: Add dependencies
-
-Clone ImGUI and NativeFileDialog into the current folder. Download SDL2 and move it into this folder
+Clone ImGUI into the current folder:
+```
+git clone https://github.com/ocornut/imgui.git
+```
+Clone and make nativefiledialog into the current folder:
+```
+git clone https://github.com/mlabbe/nativefiledialog.git
+cd nativefiledialog/build/gmake_windows
+make
+```
 
 Folder structure should look like this:
 
