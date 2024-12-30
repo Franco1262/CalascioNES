@@ -17,9 +17,11 @@ uint8_t Cartridge::ppu_reads(uint16_t address)
     uint8_t data;
     if(n_chr_rom_banks == 0)
         data = CHR_RAM[mapper->ppu_reads(address)];
+        
     else
         data = CHR_ROM[mapper->ppu_reads(address)];
-
+    
+        
     return data;
 }
 

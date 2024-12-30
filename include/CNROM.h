@@ -5,7 +5,7 @@
 class CNROM : public Mapper
 {
     public:
-        CNROM(int n_prg_rom_banks, int n_chr_rom_banks) : Mapper(n_prg_rom_banks, n_chr_rom_banks) {}
+        CNROM(int n_prg_rom_banks, int n_chr_rom_banks) : Mapper(n_prg_rom_banks, n_chr_rom_banks) {bank_switching = 0;}
         ~CNROM() override { };
         uint32_t cpu_reads(uint16_t address);
         uint32_t ppu_reads(uint16_t address);

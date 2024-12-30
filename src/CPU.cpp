@@ -164,7 +164,6 @@ void CPU::tick()
         {
             bus->new_instruction(); //Function useful for MMC1
             fetch();
-            finish = false;
         }
         else if(n_cycles < Instr[opcode].cycles)
         {
@@ -178,10 +177,8 @@ void CPU::tick()
         
         
         if(n_cycles == Instr[opcode].cycles)
-        {
             n_cycles = 0;
-            finish = true;
-        }
+        
     }
 
 }
@@ -244,6 +241,7 @@ void CPU::ie_zeropage()
         PC++;
         n_cycles++;
     }
+    
     else if constexpr(C == 2)
     {
         data = read(effective_addr);   
@@ -920,16 +918,18 @@ void CPU::STA_absy()
         case 1: 
             ie_absxy<1>(Y); 
             break;
-        case 2: 
+        case 2:
             ie_absxy<2>(Y); 
             break;
         case 3:
-            n_cycles++;
-            break;
-        case 4:
             high_byte = (absolute_addr & 0xFF00) >> 8;
             low_byte = absolute_addr & 0x00FF;
             effective_addr = ((high_byte << 8) | low_byte) + Y;
+            if(!((effective_addr == 0x2007) && (Y == 0x17)))
+                read(effective_addr);        
+            n_cycles++;
+            break;
+        case 4:
             write(effective_addr, Accumulator);
             n_cycles++;
             break;

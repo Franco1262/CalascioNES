@@ -15,10 +15,10 @@ uint32_t CNROM::cpu_reads(uint16_t address)
 
 uint32_t CNROM::ppu_reads(uint16_t address)
 {
-    return ((bank_switching & 0x3) * 0x2000) + (address & 0x1FFF);
+    return ((bank_switching * 0x2000) + (address & 0x1FFF));
 }
 
 void CNROM::cpu_writes(uint16_t address, uint8_t value)
 {
-    bank_switching = value;
+    bank_switching = value & 0x3;
 }

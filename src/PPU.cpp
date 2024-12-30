@@ -167,38 +167,9 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
             PPUDATA = value;
             write(v, PPUDATA);
             increment_v_ppudata();
-/*             logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: READING $200" + std::to_string(address) +
-                    " Value: " + 
-                    [](int data) {
-                    std::ostringstream oss;
-                    oss << std::hex << data; 
-                    return oss.str();         
-                    }(v) + 
-                    " V: " + [](int v) {
-                    std::ostringstream oss;
-                    oss << std::hex << v; 
-                    return oss.str();         
-                    }(v)); */
             break; 
         }
     } 
-
-/*     logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: WRITING $200" + std::to_string(address) + 
-        " Value: " + [](int value) {
-            std::ostringstream oss;
-            oss << std::hex << value; 
-            return oss.str();         
-            }(value) + 
-            " V: " + [](int v) {
-            std::ostringstream oss;
-            oss << std::hex << v; 
-            return oss.str();         
-            }(v) + 
-            " T: " + [](int t) {
-            std::ostringstream oss;
-            oss << std::hex << t; 
-            return oss.str();         
-            }(t));  */  
 }
 
 uint8_t PPU::read(uint16_t address)
