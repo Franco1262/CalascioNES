@@ -18,12 +18,11 @@ class Cartridge
         uint8_t ppu_reads(uint16_t address);
         uint8_t cpu_reads(uint16_t address);
         void ppu_writes(uint16_t address, uint8_t value);
-        MIRROR getMirror();
         void cpu_writes(uint16_t address, uint8_t value);
         void new_instruction();
-
         bool load_game(std::string filename, std::string& log);
         void soft_reset();
+        MIRROR getMirror();
        
     private:
         std::vector<uint8_t> CHR_ROM; 
@@ -31,7 +30,6 @@ class Cartridge
         std::vector<uint8_t> CHR_RAM;
         std::vector<uint8_t> PRG_RAM;
         std::unique_ptr<Mapper> mapper;
-
 
         struct Header
         {
@@ -48,8 +46,8 @@ class Cartridge
             uint8_t misc[3] = {0}; //Unused for now
         } header;
 
-        uint16_t n_prg_rom_banks = 1;
-        uint16_t n_chr_rom_banks = 1;
+        uint16_t n_prg_rom_banks = 0;
+        uint16_t n_chr_rom_banks = 0;
         uint16_t mapper_id;
         MIRROR mirror_mode;
 };

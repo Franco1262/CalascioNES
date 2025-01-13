@@ -42,8 +42,8 @@ class Bus
         void update_zapper_coordinates(int x, int y);
         void fire_zapper();
         void set_light_sensed(bool hit);
-
         void soft_reset();
+        
     private:
         std::shared_ptr<PPU> ppu;
         std::shared_ptr<Cartridge> cart;

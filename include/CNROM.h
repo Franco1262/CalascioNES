@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstdint>
 #include "Mapper.h"
+#include "Logger.h"
+#include <sstream>
 
 class CNROM : public Mapper
 {
@@ -13,5 +15,5 @@ class CNROM : public Mapper
         MIRROR get_mirroring_mode() {return MIRROR::HORIZONTAL;};
         void new_instruction() {};
     private:
-        uint8_t bank_switching;
+        uint8_t bank_switching = 0;
 };

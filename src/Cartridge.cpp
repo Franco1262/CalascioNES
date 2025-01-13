@@ -4,11 +4,11 @@
 const int PRG_ROM_BANK_SIZE = 0x4000;
 const int CHR_ROM_BANK_SIZE = 0x2000;
 
-Cartridge::Cartridge() : mapper(nullptr)
-{
-
+Cartridge::Cartridge() : mapper(nullptr) 
+{ 
+    CHR_RAM.resize(0x2000);
+    PRG_RAM.resize(0x8000);
 } 
-
 
 Cartridge::~Cartridge() { }
 
@@ -17,11 +17,10 @@ uint8_t Cartridge::ppu_reads(uint16_t address)
     uint8_t data;
     if(n_chr_rom_banks == 0)
         data = CHR_RAM[mapper->ppu_reads(address)];
-        
+       
     else
         data = CHR_ROM[mapper->ppu_reads(address)];
-    
-        
+          
     return data;
 }
 
@@ -34,10 +33,10 @@ void Cartridge::ppu_writes(uint16_t address, uint8_t value)
 uint8_t Cartridge::cpu_reads(uint16_t address)
 {
     uint8_t data;
+
     if(address >= 0x6000 && address < 0x8000)
         data = PRG_RAM[mapper->cpu_reads(address) & 0x7FFF];
-
-
+    
     else if(address >= 0x8000 && address <= 0xFFFF)
         data = PRG_ROM[mapper->cpu_reads(address)];
     return data;
@@ -57,14 +56,10 @@ MIRROR Cartridge::getMirror()
     if (mapper_id == 1 || mapper_id == 7) 
         mirror_mode = mapper->get_mirroring_mode();
 
-
     return mirror_mode;
 }
 
-void Cartridge::new_instruction()
-{
-    mapper->new_instruction();
-}
+void Cartridge::new_instruction() { mapper->new_instruction(); }
 
 bool Cartridge::load_game(const std::string filename, std::string& log)
 {
@@ -88,34 +83,37 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         }
 
         // Check format
-        bool iNESFormat = (header.id_string[0] == 'N' && header.id_string[1] == 'E' && header.id_string[2] == 'S' && header.id_string[3] == 0x1A);
-        bool NES20Format = (iNESFormat && (header.flag7 & 0x0C) == 0x08);
+        bool iNESFormat=false;
+        if (header.id_string[0]=='N' && header.id_string[1]=='E' && header.id_string[2]=='S' && header.id_string[3]==0x1A)
+            iNESFormat=true;
+
+        bool NES20Format=false;
+        if (iNESFormat==true && (header.flag7 & 0x0C)==0x08)
+            NES20Format=true;
+
+        if(NES20Format)
+        {
+            log =   std::string("Error: NES2.0 format not supported") + filename;
+            ok = false;
+            return ok;            
+        }
 
         // Set mirror mode and ROM bank counts
         mirror_mode = static_cast<MIRROR>(header.flag6 & 0x01);
-        n_prg_rom_banks = (header.prg_rom_lsb | ((header.prg_chr_rom_size & 0x0F) << 8)) & 0xFFF;
-        n_chr_rom_banks = (header.chr_rom_lsb | ((header.prg_chr_rom_size & 0xF0) << 8)) & 0xFFF;
+        n_prg_rom_banks = header.prg_rom_lsb;
+        n_chr_rom_banks = header.chr_rom_lsb;
 
-        // Ignore trainer if present
+        //Allocate memory
+        PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
+        CHR_ROM.resize(n_chr_rom_banks * CHR_ROM_BANK_SIZE);
+
+        //Ignore trainer if present
         if (header.flag6 & 0x4)
         {
             log = std::string("Error: Games with trainer are not supported");
             ok = false;
             return ok;
         }
-
-        // Allocate memory for PRG and CHR ROM
-        PRG_ROM.resize(n_prg_rom_banks * PRG_ROM_BANK_SIZE);
-        uint32_t chr_size = (n_chr_rom_banks & 0xF00) == 0xF00
-            ? (1 << (header.prg_chr_rom_size & 0x0F)) * ((header.chr_rom_lsb & 0x03) * 2 + 1)
-            : n_chr_rom_banks * CHR_ROM_BANK_SIZE;
-        
-        if (n_chr_rom_banks > 0)
-            CHR_ROM.resize(chr_size);
-        else
-            CHR_RAM.resize(NES20Format ? (64 << (header.chr_ram_shift & 0x0F)) : 0x2000);
-
-        PRG_RAM.resize(0x8000);
 
         // Read PRG-ROM
         if (!file.read(reinterpret_cast<char*>(PRG_ROM.data()), PRG_ROM.size()))
@@ -126,22 +124,17 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
         }
 
         // Read CHR-ROM
-        if (n_chr_rom_banks > 0) {
-            // Get current position in the file
+        if (n_chr_rom_banks > 0) 
+        {
             std::streampos current_pos = file.tellg();
-
-            // Move to the end to calculate remaining size
             file.seekg(0, std::ios::end);
             std::streamsize remaining_size = file.tellg() - current_pos;
-
-            // Move back to the original position
             file.seekg(current_pos, std::ios::beg);
-
-            // Resize CHR_ROM if necessary
             CHR_ROM.resize(static_cast<size_t>(remaining_size));
 
             // Read the remaining data
-            if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), remaining_size)) {
+            if (!file.read(reinterpret_cast<char*>(CHR_ROM.data()), remaining_size)) 
+            {
                 log = std::string("Error: Failed to read CHR-ROM in ") + filename;
                 ok = false;
                 return ok;

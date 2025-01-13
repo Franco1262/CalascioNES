@@ -73,8 +73,7 @@ CPU::CPU()
         {0xFC, &CPU::XXX, 4 },     {0xFD, &CPU::SBC_absx, 5 },    {0xFE, &CPU::INC_absx, 7 },    {0xFF, &CPU::XXX, 7},
     };
 
-    odd_cycle = false;
-    cycles_dma = 0;
+    get_cycle = true;
     n_cycles = 0;
     PC = 0x0000;
     reset_flag = true;
@@ -91,10 +90,11 @@ void CPU::write(uint16_t address, uint8_t value)
     {
         OAMDMA = value;
         oamdma_flag = true;
-        if(odd_cycle)
-            alignment_needed = true;
-        else
+        halt_cycle = true;
+        if(get_cycle)
             alignment_needed = false;
+        else
+            alignment_needed = true;
         dma_address = 0x0000 | (OAMDMA << 8);
     }  
     else
@@ -119,44 +119,41 @@ void CPU::connect_bus(std::shared_ptr<Bus> bus)
 
 void CPU::transfer_oam_bytes()
 {
-    switch(odd_cycle)
+    switch(get_cycle)
     {
-        case 0:
-        {
-            if(cycles_dma == 0);
-            else
-                dma_read = read(dma_address);
-            break;
-        }
         case 1:
         {
-            if(cycles_dma == 0);
-            else if(alignment_needed)
-                alignment_needed = false;
-            else
-            {
-                write(0x2004, dma_read);
-                dma_address++;
-            }
+            dma_read = read(dma_address);
+            break;
+        }
+        case 0:
+        {
+            if((dma_address & 0x00FF) == 0xFF)
+                oamdma_flag = false;        
+
+            write(0x2004, dma_read);
+            dma_address++;    
             break;
         }
     }
-    cycles_dma++; 
-    if(((dma_address & 0x00FF) == 0x00) && (cycles_dma > 3))
-    {
-        cycles_dma = 0;
-        oamdma_flag = false;
-    } 
 }
 
 void CPU::tick()
 {
-    odd_cycle = !odd_cycle;
+    get_cycle = !get_cycle;
+
     if(reset_flag)
         reset();
 
-    else if(oamdma_flag)  
-        transfer_oam_bytes();   
+    else if(oamdma_flag)
+    {
+        if(halt_cycle)
+            halt_cycle = false;
+        else if(alignment_needed)
+            alignment_needed = false;
+        else
+            transfer_oam_bytes();  
+    } 
     
     else
     {
@@ -174,22 +171,17 @@ void CPU::tick()
                     NMI = true;
             }
         } 
-        
-        
+          
         if(n_cycles == Instr[opcode].cycles)
-            n_cycles = 0;
-        
+            n_cycles = 0;       
     }
-
 }
 
 void CPU::fetch()
 {
     if(NMI)
-    {
         opcode = 0x00;
-    }
-
+    
     else
     {
         opcode = read(PC);
@@ -214,11 +206,6 @@ void CPU::fetch()
     n_cycles++;
 }
 
-uint8_t CPU::get_opcode()
-{
-    return opcode;
-}
-
 void CPU::upd_negative_zero_flags(uint8_t byte)
 {
     if (byte == 0x00)
@@ -228,10 +215,7 @@ void CPU::upd_negative_zero_flags(uint8_t byte)
     P = (P  & 0x7F) | (byte & 0x80);
 }
 
-
-
 //Addressing modes for instructions that perform operations inside the cpu
-
 template <unsigned C>
 void CPU::ie_zeropage()
 {
@@ -3005,17 +2989,17 @@ void CPU::BEQ()
         case 1:
             offset = read(PC);
             PC++;
-            if(!((P & 0x02) >> 1))
+            if(P & 0x02)
             {
-                n_cycles+=3;
+                n_cycles++;
             }
             else
-                n_cycles++;
+                n_cycles += 3;
             break;
         case 2:
-            high_byte = ((0xFF00 & PC) >> 8);           
+            high_byte = (0xFF00 & PC);           
             PC += offset;
-            if(high_byte == ((PC & 0xFF00) >> 8))
+            if(high_byte == (PC & 0xFF00))
                 n_cycles+=2;
             else
                 n_cycles++;           
@@ -3246,10 +3230,11 @@ void CPU::RTS()
 
 void CPU::BRK()
 {
+    std::ostringstream oss;
     switch (n_cycles)
     {
         case 1: 
-            n_cycles++; 
+            n_cycles++;
             break; 
         case 2:
             if(!NMI)
@@ -3288,7 +3273,6 @@ void CPU::BRK()
             else
             {
                 PC |= (read(0xFFFF) << 8);
-
             }
             n_cycles++;
             break;
@@ -3424,8 +3408,7 @@ void CPU::soft_reset()
     // Reset Direct Memory Access (DMA) related variables
     OAMDMA = 0x00;
     oamdma_flag = false;
-    odd_cycle = false;
-    cycles_dma = 0;
+    get_cycle = true;
     alignment_needed = false;
     dma_read = 0x00;
     dma_address = 0x0000;

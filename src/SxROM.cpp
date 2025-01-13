@@ -25,15 +25,15 @@ uint32_t SxROM::cpu_reads(uint16_t address)
         {
             case 0:
             case 1:
-                mapped_addr = (((prg_bank & 0xFE) >> 1) * 0x8000) + (address & 0x7FFF);;
+                mapped_addr = (((prg_bank & 0x1E) >> 1) * 0x8000) + (address & 0x7FFF);;
                 break; 
             case 2:
                 if(address < 0xC000) mapped_addr = address & 0x3FFF;
-                else mapped_addr = ((prg_bank & 0xFF) * 0x4000) + (address & 0x3FFF);
+                else mapped_addr = ((prg_bank & 0xF) * 0x4000) + (address & 0x3FFF);
                 break;
 
             case 3:
-                if(address < 0xC000) mapped_addr = ((prg_bank & 0xFF) * 0x4000) + (address & 0x3FFF);
+                if(address < 0xC000) mapped_addr = ((prg_bank & 0xF) * 0x4000) + (address & 0x3FFF);
                 else mapped_addr = ((n_prg_rom_banks - 1) * 0x4000) + (address & 0x3FFF);
                 break;
         }     
@@ -82,11 +82,10 @@ uint32_t SxROM::ppu_reads(uint16_t address)
 }
 
 void SxROM::cpu_writes(uint16_t address, uint8_t value)
-{
-
+{ 
     if (value & 0x80)
     {
-        shift_register = 0x10; // Reset to 0x10
+        shift_register = 0x10; // Reset to 0x00
         n_write = 0;
         control |= 0xC;
         update_state();
@@ -96,8 +95,7 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
     {
         if(!written_on_this_instruction)
         {
-            load_register = value;
-            shift_register = (shift_register >> 1) | ((load_register & 1) << 4);
+            shift_register = (shift_register >> 1) | ((value & 1) << 4);
             n_write++;
             
             if (n_write == 5)
@@ -118,9 +116,9 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
                 shift_register = 0x10; // Reset the shift register
             }
         } 
-    }   
+    }
 
-    written_on_this_instruction = true;   
+    written_on_this_instruction = true;
 }
 
 

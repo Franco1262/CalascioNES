@@ -104,10 +104,8 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
         case 0: 
         {
             if(((PPUCTRL & 0x80) == 0) && (value & 0x80) && (PPUSTATUS & 0x80))
-            {
-                //logger.log("[Scanline: " + std::to_string(scanline) + " Cycle: " + std::to_string(cycles) + "]: NMI TRIGGERED");
                 bus->set_nmi(true);
-            }
+            
             PPUCTRL = value;
             t = (t & ~(0x3 << 10)) | ((PPUCTRL & 0x3) << 10);
 
@@ -125,7 +123,6 @@ void PPU::cpu_writes(uint16_t address, uint8_t value)
 
             OAM[OAMADDR] = value;  // Directly write value to OAM
             OAMADDR = (OAMADDR + 1) & 0xFF;  // Increment OAMADDR with wrapping
-
             break; 
         }
         case 5: 
@@ -213,9 +210,7 @@ uint8_t PPU::read(uint16_t address)
             data = nametable[address & 0x3FF];        
 
         if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
-            data = nametable[0x400 + (address & 0x3FF)];
-        
-        
+            data = nametable[0x400 + (address & 0x3FF)];      
     } 
 
     else if( (address >= 0x3F00) && (address <= 0x3FFF) )
@@ -812,12 +807,13 @@ void PPU::check_sprite_0_hit()
         {
             if (pixel != 0x00 && scanline_buffer[x] != 0x00)
             {
-                if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))               
-                    PPUSTATUS |= 0x40;  // Set sprite 0 hit flag                            
+                if (!((((PPUMASK >> 1) & 0x3) != 3) && (x < 8)))
+                {
+                    PPUSTATUS |= 0x40;  // Set sprite 0 hit flag 
+                }                                     
             }
         }  
-    }
-       
+    }      
 }
 
 ScanlineType PPU::get_scanline_type()

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstdint>
 #include "Mapper.h"
+#include "Logger.h"
+#include <sstream>
 
 class SxROM : public Mapper
 {

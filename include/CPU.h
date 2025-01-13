@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <memory>
+#include "logger.h"
 
 class Bus;
 class CPU
@@ -24,11 +25,9 @@ class CPU
         void soft_reset();
 
     private:
-
         int cycles = 0;
         uint8_t opcode;
         std::shared_ptr<Bus> bus;
-        //Logger logger;
         bool start_logging = false;
         //Registers
         uint8_t Accumulator;
@@ -40,8 +39,8 @@ class CPU
         uint8_t OAMDMA;
 
         bool oamdma_flag;
-        bool odd_cycle;
-        int cycles_dma;
+        bool halt_cycle = false;
+        bool get_cycle;
         bool alignment_needed;
         uint8_t dma_read;
         uint16_t dma_address;
@@ -72,7 +71,7 @@ class CPU
         };
 
         std::vector<CPU::Instruction> Instr;
-        
+
         //Flag instructions
 
         void SEC();
