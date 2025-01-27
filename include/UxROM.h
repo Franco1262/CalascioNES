@@ -13,5 +13,5 @@ class UxROM : public Mapper
         MIRROR get_mirroring_mode() {return MIRROR::HORIZONTAL;};
         void new_instruction() {};
     private:
-        uint8_t bank_switching;
+        uint8_t bank_switching = 0;
 };

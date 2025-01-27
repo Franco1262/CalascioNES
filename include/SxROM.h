@@ -16,19 +16,19 @@ class SxROM : public Mapper
         void update_state();
         void new_instruction();
     private:
-        uint8_t load_register;
-        uint8_t control;
-        uint8_t chr_bank_0;
-        uint8_t chr_bank_1;
-        uint8_t prg_bank;
-        uint8_t shift_register;
-        short n_write;
-        uint8_t prg_rom_mode;
-        bool chr_rom_mode;
-        uint8_t old;
+        uint8_t load_register = 0;
+        uint8_t control = 0;
+        uint8_t chr_bank_0 = 0;
+        uint8_t chr_bank_1 = 0;
+        uint8_t prg_bank = 0;
+        uint8_t shift_register = 0;
+        short n_write = 0;
+        uint8_t prg_rom_mode = 0;
+        bool chr_rom_mode = 0;
+        uint8_t old = 0;
 
-        uint32_t address_bank_0;
-        uint32_t address_bank_1;
-        MIRROR mirroring_mode;
-        bool written_on_this_instruction;
+        uint32_t address_bank_0 = 0;
+        uint32_t address_bank_1 = 0;
+        MIRROR mirroring_mode = MIRROR::HORIZONTAL;
+        bool written_on_this_instruction = 0;
 };

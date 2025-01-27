@@ -2,14 +2,6 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-//#include "Logger.h"
-
-enum ScanlineType
-{
-    visible_frame = 0,
-    post_render = 240,
-    pre_render = 261
-};
 
 class Bus;
 class PPU
@@ -19,44 +11,47 @@ class PPU
         ~PPU();
         void tick();
 
+
+        //PPU read an write functions
         uint8_t read(uint16_t address);
         void write(uint16_t address, uint8_t value);
         
+        //CPU read and write functions
         uint8_t cpu_reads(uint16_t address);
         void cpu_writes(uint16_t address, uint8_t value); 
-       
+        //Functions for sprite handling
+        void sprite_evaluation();
+        void check_sprite_0_hit();
+
+        //Functions for drawing data to screen
+        void draw_background_pixel();
+        void draw_sprite_pixel();
+        
+        void increment_hori_v();
+        void increment_vert_v();
+        void increment_v_ppudata();
+
+        void load_shifters();
+        void shift_bits();
+
         void connect_bus(std::shared_ptr<Bus> bus);
         void soft_reset();
         
         uint32_t get_palette_color(uint8_t paletteFF, uint8_t pixel);
         std::vector<uint32_t>& get_screen();
+        //Functions useful for debugging
         std::vector<uint32_t> get_pattern_table(int);
         std::vector<uint32_t> get_nametable(int);
         std::vector<uint32_t> get_sprite();
 
-        inline bool get_frame()
-        {
-            return frame;
-        }
-
-        void increment_hori_v();
-        void increment_vert_v();
-        void increment_v_ppudata();
-
-
-        void load_shifters();
-        void shift_bits();
-        void draw_background_pixel();
-        void draw_sprite_pixel();
-        void check_sprite_0_hit();
+        bool get_frame();
         void set_ppu_timing(uint8_t);
-        void check_target_hit(int x, int y);
-        void set_zapper(bool zapper);
 
-        void sprite_evaluation();
 
-        ScanlineType get_scanline_type();
+        //Zapper useful functions
         void is_pixel_bright(int x, int y);
+        void set_zapper(bool zapper);
+        void check_target_hit(int x, int y);
     private:
         //PPU Registers
         uint8_t PPUCTRL;
@@ -68,8 +63,6 @@ class PPU
         uint8_t PPUADDR;
         uint8_t PPUDATA;
         uint8_t OAMDMA;
-
-        ScanlineType scanline_type;
 
         std::shared_ptr<Bus> bus;
 
@@ -108,8 +101,6 @@ class PPU
 
         uint8_t nametable_id;
         uint8_t attribute;
-        uint16_t attribute_next_tile;
-        uint8_t attribute_current_tile;
         
         uint8_t bg_lsb;
         uint8_t bg_msb;
@@ -146,12 +137,9 @@ class PPU
         bool in_range;
 
         //Used for clearing OAM
-        int j;
+        int secondary_oam_index;
         int i;
-        uint8_t byte;
 
-
-        bool is_rendering_enabled;
 
         //Variables for sprite 0 hit handling
         bool sprite_0_next_scanline;
@@ -169,4 +157,7 @@ class PPU
 
         int zapper_x, zapper_y;
         bool zapper_connected = false;
+
+        bool is_rendering_enabled;
+        uint8_t toggling_rendering_counter = 2;
 };

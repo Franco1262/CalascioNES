@@ -13,6 +13,6 @@ class AxROM : public Mapper
         MIRROR get_mirroring_mode();
         void new_instruction() {};
     private:
-        uint8_t bank_switching;
-        MIRROR mirroring_mode;
+        uint8_t bank_switching = 0;
+        MIRROR mirroring_mode = MIRROR::HORIZONTAL;
 };

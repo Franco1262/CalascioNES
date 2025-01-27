@@ -4,8 +4,7 @@ uint32_t AxROM::cpu_reads(uint16_t address)
 {
     uint32_t mapped_addr = 0;
    
-    if(address >= 0x8000 && address <= 0xFFFF)
-        mapped_addr = (bank_switching * 0x8000) + (address & 0x7FFF);
+    mapped_addr = (bank_switching * 0x8000) + (address & 0x7FFF);
 
     return mapped_addr; 
 }
