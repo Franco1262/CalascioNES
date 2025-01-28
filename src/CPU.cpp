@@ -73,7 +73,7 @@ CPU::CPU()
         {0xFC, &CPU::XXX, 4 },     {0xFD, &CPU::SBC_absx, 5 },    {0xFE, &CPU::INC_absx, 7 },    {0xFF, &CPU::XXX, 7},
     };
 
-    get_cycle = true;
+    get_cycle = false;
     n_cycles = 0;
     PC = 0x0000;
     reset_flag = true;
@@ -141,7 +141,6 @@ void CPU::transfer_oam_bytes()
 void CPU::tick()
 {
     get_cycle = !get_cycle;
-
     if(reset_flag)
         reset();
 
@@ -153,7 +152,7 @@ void CPU::tick()
             alignment_needed = false;
         else
             transfer_oam_bytes();  
-    } 
+    }   
     
     else
     {
@@ -171,17 +170,22 @@ void CPU::tick()
                     NMI = true;
             }
         } 
-          
+        
+        
         if(n_cycles == Instr[opcode].cycles)
-            n_cycles = 0;       
+            n_cycles = 0;
+        
     }
+
 }
 
 void CPU::fetch()
 {
     if(NMI)
+    {
         opcode = 0x00;
-    
+    }
+
     else
     {
         opcode = read(PC);
@@ -206,6 +210,11 @@ void CPU::fetch()
     n_cycles++;
 }
 
+uint8_t CPU::get_opcode()
+{
+    return opcode;
+}
+
 void CPU::upd_negative_zero_flags(uint8_t byte)
 {
     if (byte == 0x00)
@@ -215,7 +224,10 @@ void CPU::upd_negative_zero_flags(uint8_t byte)
     P = (P  & 0x7F) | (byte & 0x80);
 }
 
+
+
 //Addressing modes for instructions that perform operations inside the cpu
+
 template <unsigned C>
 void CPU::ie_zeropage()
 {
@@ -2989,17 +3001,17 @@ void CPU::BEQ()
         case 1:
             offset = read(PC);
             PC++;
-            if(P & 0x02)
+            if(!((P & 0x02) >> 1))
             {
-                n_cycles++;
+                n_cycles+=3;
             }
             else
-                n_cycles += 3;
+                n_cycles++;
             break;
         case 2:
-            high_byte = (0xFF00 & PC);           
+            high_byte = ((0xFF00 & PC) >> 8);           
             PC += offset;
-            if(high_byte == (PC & 0xFF00))
+            if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
                 n_cycles++;           
@@ -3230,11 +3242,10 @@ void CPU::RTS()
 
 void CPU::BRK()
 {
-    std::ostringstream oss;
     switch (n_cycles)
     {
         case 1: 
-            n_cycles++;
+            n_cycles++; 
             break; 
         case 2:
             if(!NMI)
@@ -3273,6 +3284,7 @@ void CPU::BRK()
             else
             {
                 PC |= (read(0xFFFF) << 8);
+
             }
             n_cycles++;
             break;
@@ -3408,7 +3420,7 @@ void CPU::soft_reset()
     // Reset Direct Memory Access (DMA) related variables
     OAMDMA = 0x00;
     oamdma_flag = false;
-    get_cycle = true;
+    get_cycle = false;
     alignment_needed = false;
     dma_read = 0x00;
     dma_address = 0x0000;

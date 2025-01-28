@@ -35,6 +35,7 @@ void PPU::tick()
             toggling_rendering_counter = 3;
         }
     }
+
     if( ((scanline >= 0 && scanline < 240) || (scanline == pre_render_scanline)) && is_rendering_enabled)
     {
         if(((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) 
@@ -50,9 +51,7 @@ void PPU::tick()
                     load_shifters();
                     increment_hori_v(); 
                     if(cycles == 256)
-                        increment_vert_v();  
-                    
-              
+                        increment_vert_v();         
                     break;
                 }
                 
@@ -172,17 +171,15 @@ void PPU::tick()
             OAMADDR = 0; 
     }
 
-    if( ((scanline >= 0 && scanline < 240) || (scanline == pre_render_scanline)) && !is_rendering_enabled)
-    {
-        if(((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) 
-        {
-            if((scanline != pre_render_scanline) && (cycles < 257))
-                draw_background_pixel();
-        }
-    }
-
     if((scanline == pre_render_scanline) && (cycles == 1))
         PPUSTATUS &= 0x1F;
+
+    if( (scanline < 240) && !is_rendering_enabled)
+    {
+        if(cycles > 0 && cycles < 257) 
+            draw_background_pixel();
+    }
+
 //--------------------------------------------------------------------------------------------------------------------------------------------- 
     if( (scanline == 241) && (cycles == 1))
     {   
@@ -558,6 +555,7 @@ void PPU::sprite_evaluation()
 void PPU::check_sprite_0_hit()
 {
     uint8_t x_coord = scanline_sprite_buffer[3];
+    uint8_t sprite_y_coord = scanline_sprite_buffer[0];
     uint8_t attribute_sprite = scanline_sprite_buffer[2];
     uint8_t sprite_lsb;
     uint8_t sprite_msb;
@@ -584,7 +582,7 @@ void PPU::check_sprite_0_hit()
 
     uint8_t x = x_coord + offset ;
     bool left_clipping_enabled = (PPUMASK & 0x6) != 0x6;
-    if ( (x < 255) && !(PPUSTATUS & 0x40) && pixel && scanline_buffer[x] && !(left_clipping_enabled && (x < 8)))
+    if ( (x < 255) && !(PPUSTATUS & 0x40) && pixel && scanline_buffer[x] && !(left_clipping_enabled && (x < 8)) && sprite_y_coord < 0xEF)
         PPUSTATUS |= 0x40;  // Set sprite 0 hit flag                  
 }
 
@@ -777,7 +775,7 @@ void PPU::draw_background_pixel()
         scanline_buffer[cycles - 1] = 0x00;
     }
     
-    if(sprite_0_current_scanline && ((PPUMASK & 0x18) == 0x18) )
+    if(sprite_0_current_scanline && ((PPUMASK & 0x18) == 0x18))
     {
         uint8_t sprite_0_x_coord = scanline_sprite_buffer[3];
         if ( ((cycles - 1 ) - sprite_0_x_coord >= 0) && ((cycles - 1) - sprite_0_x_coord < 8) )

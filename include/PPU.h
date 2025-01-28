@@ -159,5 +159,5 @@ class PPU
         bool zapper_connected = false;
 
         bool is_rendering_enabled;
-        uint8_t toggling_rendering_counter = 2;
+        uint8_t toggling_rendering_counter = 3;
 };
