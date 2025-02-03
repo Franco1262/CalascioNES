@@ -4,9 +4,15 @@
 SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks, n_chr_rom_banks) 
 {
     n_write = 0;
-    shift_register = 0x00;
+    shift_register = 0x10;
     prg_rom_mode = 3;
-    chr_bank_0 = chr_bank_1 = prg_bank = 0;
+    chr_rom_mode = 0;
+    chr_bank_0 = 0;
+    chr_bank_1 = 0;
+    prg_bank = 0;
+    control = 0;
+    written_on_this_instruction = false;
+    mirroring_mode = MIRROR::HORIZONTAL;
     written_on_this_instruction = false;
 }
 
@@ -17,6 +23,7 @@ uint32_t SxROM::cpu_reads(uint16_t address)
     //PRG RAM
     if(address >= 0x6000 && address < 0x8000)
         mapped_addr = address & 0x1FFF;
+    
     
     //PRG ROM
     else if(address >= 0x8000 && address <= 0xFFFF)
@@ -82,7 +89,7 @@ uint32_t SxROM::ppu_reads(uint16_t address)
 }
 
 void SxROM::cpu_writes(uint16_t address, uint8_t value)
-{ 
+{
     if (value & 0x80)
     {
         shift_register = 0x10; // Reset to 0x00
@@ -97,27 +104,30 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
         {
             shift_register = (shift_register >> 1) | ((value & 1) << 4);
             n_write++;
-            
+            address = (address >> 13) & 0x3;
             if (n_write == 5)
             {
-
-                if(address >= 0x8000 && address < 0xA000)
+                switch(address)
                 {
-                    control = shift_register & 0x1F; 
-                    update_state();
-                }              
-                else if(address >= 0xA000 && address < 0xC000)
-                    chr_bank_0 = shift_register & 0x1F;
-                else if(address >= 0xC000 && address < 0xE000)
-                    chr_bank_1 = shift_register & 0x1F;
-                else if(address >= 0xE000 && address <= 0xFFFF)
-                    prg_bank = shift_register & 0x0F;      
+                    case 0:
+                        control = shift_register & 0x1F; 
+                        update_state();
+                        break;
+                    case 1:
+                        chr_bank_0 = shift_register & 0x1F;
+                        break;
+                    case 2:
+                        chr_bank_1 = shift_register & 0x1F;
+                        break;
+                    case 3:
+                        prg_bank = shift_register & 0x0F;
+                        break;                  
+                }  
                 n_write = 0; // Reset write count
                 shift_register = 0x10; // Reset the shift register
             }
-        } 
+        }
     }
-
     written_on_this_instruction = true;
 }
 
