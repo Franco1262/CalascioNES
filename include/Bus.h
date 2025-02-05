@@ -43,6 +43,8 @@ class Bus
         void fire_zapper();
         void set_light_sensed(bool hit);
         void soft_reset();
+
+        void apu_irq();
         
     private:
         std::shared_ptr<PPU> ppu;

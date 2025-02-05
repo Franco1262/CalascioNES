@@ -38,9 +38,9 @@ void PPU::tick()
 
     if( ((scanline >= 0 && scanline < 240) || (scanline == pre_render_scanline)) && is_rendering_enabled)
     {
-        if((((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) && (PPUMASK & 0x8)) 
+        if(((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) 
         {
-            if((scanline != pre_render_scanline) && (cycles < 257))
+            if((scanline != pre_render_scanline) && (cycles < 257) && (PPUMASK & 0x8))
                 draw_background_pixel();
             shift_bits(); 
             switch(cycles & 0x7)
@@ -48,7 +48,10 @@ void PPU::tick()
                 case 0:
                 {
                     bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
-                    load_shifters();      
+                    load_shifters();
+                    increment_hori_v(); 
+                    if(cycles == 256)
+                        increment_vert_v();       
                     break;
                 }
                 
@@ -71,13 +74,7 @@ void PPU::tick()
                 }     
             }
         }
-        if((((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) && ((scanline < 240) || (scanline == pre_render_scanline)) && ((cycles & 0x7) == 0))
-        {
-            increment_hori_v(); 
-            if(cycles == 256)
-                increment_vert_v();   
-        }
-                        
+                       
         if((cycles == 257))
             v = (v & ~(0x41F)) | (t & 0x41F);  
 
@@ -86,7 +83,7 @@ void PPU::tick()
 
         //Sprites rendering
 
-        if((scanline != pre_render_scanline) && (cycles > 64) && ( cycles < 257) && (PPUMASK & 0x10))
+        if((scanline != pre_render_scanline) && (cycles > 64) && ( cycles < 257))
             sprite_evaluation(); 
 
         if((cycles > 256) && (cycles < 321))
