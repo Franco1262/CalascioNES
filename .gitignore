@@ -1,6 +1,6 @@
 .vscode/
 ROMS/
-SDL2-2.30.6/
+SDL2/
 TESTS/
 *.txt
 json/

@@ -25,13 +25,20 @@ class APU
         void cpu_writes(uint16_t address, uint8_t value);
         void connect_bus(std::shared_ptr<Bus> bus);
         void tick();
+        void set_timing(bool value);
+
+    private:
         void tick_envelope();
         void tick_length_counter();
-    private:
+        void tick_frame_counter();
+        
+        float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;
         Pulse pulse1, pulse2;
         uint8_t status_register = 0;
         bool sequence_mode = 0;
         bool inhibit_flag = 0;
-        uint8_t sequence_step = 1;  
+        uint8_t sequence_step = 1;
+        bool region = 0; //0 NTSC |  1 PAL
+
 };

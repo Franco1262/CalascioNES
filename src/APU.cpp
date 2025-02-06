@@ -1,6 +1,16 @@
 #include "APU.h"
 #include "Bus.h"
 
+
+APU::APU()
+{
+
+}
+APU::~APU()
+{
+
+}
+
 /*
 Pulse ($4000–$4007)
 ________________________________________________________________________________________________________________________
@@ -79,6 +89,20 @@ either 4 or 5 steps depending on bit 6 of frame counter ($4017)
 
 void APU::tick()
 {
+    apu_cycles_counter += 0.5;
+    if(!region) // NTSC mode
+    {
+        if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
+            apu_cycles_counter == 14914.5 || apu_cycles_counter == 18640.5)
+        {
+            tick_frame_counter();  
+        }
+    }
+
+}
+
+void APU::tick_frame_counter()
+{
     switch (sequence_step)
     {
         case 1:
@@ -105,6 +129,7 @@ void APU::tick()
                 tick_envelope();
                 //tick_linear_counter();
                 sequence_step = 0;
+                apu_cycles_counter = 0.0;
             }
             break;
         case 5:
@@ -114,6 +139,7 @@ void APU::tick()
             if(!inhibit_flag)
                 bus->apu_irq();
             sequence_step = 0;
+            apu_cycles_counter = 0.0;
             break;
     }
 }
@@ -130,4 +156,9 @@ void APU::tick_length_counter()
 void APU::connect_bus(std::shared_ptr<Bus> bus)
 {
     this->bus = bus;
+}
+
+void APU::set_timing(bool value)
+{
+    region = value;
 }

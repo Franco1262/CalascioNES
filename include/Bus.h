@@ -6,6 +6,7 @@
 
 class PPU;
 class CPU;
+class APU;
 class Cartridge;
 
 struct Zapper
@@ -20,7 +21,7 @@ struct Zapper
 class Bus
 {
     public:
-        Bus(std::shared_ptr<PPU> ppu,  std::shared_ptr<Cartridge> cart);
+        Bus(std::shared_ptr<PPU> ppu,  std::shared_ptr<Cartridge> cart, std::shared_ptr<APU> apu);
         ~Bus();
 
         uint8_t cpu_reads(uint16_t address);
@@ -48,6 +49,7 @@ class Bus
         
     private:
         std::shared_ptr<PPU> ppu;
+        std::shared_ptr<APU> apu;
         std::shared_ptr<Cartridge> cart;
 
         bool NMI = false;

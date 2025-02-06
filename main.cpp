@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "CPU.h"
 #include "PPU.h"
+#include "APU.h"
 #include "Cartridge.h"
 #include "Bus.h"
 #include "nfd.h"
@@ -78,7 +79,8 @@ class NES
             cpu = std::make_shared<CPU>();
             ppu = std::make_shared<PPU>();
             cart = std::make_shared<Cartridge>();
-            bus = std::make_shared<Bus>(ppu, cart);
+            apu = std::make_shared<APU>();
+            bus = std::make_shared<Bus>(ppu, cart, apu);
 
             cpu->connect_bus(bus);
             ppu->connect_bus(bus);
@@ -117,6 +119,7 @@ class NES
                     ppu_accumulator -= 1.0;
                 }
                 cpu->tick();
+                apu->tick();
             }      
         }
 
@@ -131,11 +134,13 @@ class NES
             {
                 PPU_TIMING = 3.2;
                 ppu->set_ppu_timing(1);
+                apu->set_timing(1);
             }
             else
             {
                 PPU_TIMING = 3;
-                ppu->set_ppu_timing(0);                        
+                ppu->set_ppu_timing(0);
+                apu->set_timing(0);                       
             }
         }
 
@@ -203,6 +208,7 @@ class NES
     private:
         std::shared_ptr<CPU> cpu;
         std::shared_ptr<PPU> ppu;
+        std::shared_ptr<APU> apu;
         std::shared_ptr<Cartridge> cart;
         std::shared_ptr<Bus> bus;
         bool current_frame;
