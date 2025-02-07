@@ -146,6 +146,15 @@ void APU::tick_frame_counter()
 
 void APU::tick_envelope()
 {
+    //If pulse1 enabled
+    if(status_register & 0x1)
+    {
+        if(!pulse1.envelope_loop)
+        {
+            
+        }
+
+    }
 
 }
 void APU::tick_length_counter()

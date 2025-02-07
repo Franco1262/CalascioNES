@@ -226,3 +226,8 @@ void Bus::set_light_sensed(bool hit)
     zapper.light_sensed = !hit;
     shift_register_controller2 = (shift_register_controller2 & ~(1 << 3)) | (zapper.light_sensed << 3);
 }
+
+void Bus::apu_irq()
+{
+
+}

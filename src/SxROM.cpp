@@ -13,7 +13,6 @@ SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks
     control = 0;
     written_on_this_instruction = false;
     mirroring_mode = MIRROR::HORIZONTAL;
-    written_on_this_instruction = false;
 }
 
 uint32_t SxROM::cpu_reads(uint16_t address)
