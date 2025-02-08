@@ -24,8 +24,10 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
 
 PPU::~PPU() {}
 
+
 void PPU::tick()
 {
+    //Delay for toggling rendering
     if((is_rendering_enabled != IS_PPUMASK_SET(PPUMASK)))
     {
         toggling_rendering_counter--;
@@ -36,133 +38,144 @@ void PPU::tick()
         }
     }
 
-    if( ((scanline >= 0 && scanline < 240) || (scanline == pre_render_scanline)) && is_rendering_enabled)
+    if(is_rendering_enabled)
     {
-        if(((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337))) 
+        if((scanline < 240) || (scanline == pre_render_scanline))
         {
-            if((scanline != pre_render_scanline) && (cycles < 257) && (PPUMASK & 0x8))
-                draw_background_pixel();
-            shift_bits(); 
-            switch(cycles & 0x7)
+            //Render background
+            if(((cycles > 0) && (cycles < 257)) || ((cycles > 320) && (cycles < 337)))
             {
-                case 0:
-                {
-                    bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
-                    load_shifters();
-                    increment_hori_v(); 
-                    if(cycles == 256)
-                        increment_vert_v();       
-                    break;
-                }
-                
-                case 2:
-                {
-                    nametable_id = read((0x2000 | (v & 0x0FFF)));
-                    break;
-                }
+                if((scanline != pre_render_scanline) && (cycles < 257) && (PPUMASK & 0x8))
+                    draw_background_pixel();
+                shift_bits(); 
 
-                case 4:
+                switch(cycles & 0x7)
                 {
-                    attribute = read((0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)));
-                    break;
-                }
+                    case 0:
+                    {
+                        bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
+                        load_shifters();
+                        increment_hori_v(); 
+                        if(cycles == 256)
+                            increment_vert_v();       
+                        break;
+                    }
+                    
+                    case 2:
+                    {
+                        nametable_id = read((0x2000 | (v & 0x0FFF)));
+                        break;
+                    }
 
-                case 6:
-                {
-                    bg_lsb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12));
-                    break;
-                }     
+                    case 4:
+                    {
+                        attribute = read((0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)));
+                        break;
+                    }
+
+                    case 6:
+                    {
+                        bg_lsb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12));
+                        break;
+                    }     
+                }
             }
-        }
-                       
-        if((cycles == 257))
-            v = (v & ~(0x41F)) | (t & 0x41F);  
+            
+            //Update loopy registers
+            if((cycles == 257))
+                v = (v & ~(0x41F)) | (t & 0x41F);  
 
-        if(((cycles >= 280) && ((cycles < 305))) && (scanline == pre_render_scanline))
-            v = (v & ~(0x7BE0)) | (t & 0x7BE0);
+            if(((cycles >= 280) && ((cycles < 305))) && (scanline == pre_render_scanline))
+                v = (v & ~(0x7BE0)) | (t & 0x7BE0);
 
-        //Sprites rendering
-
-        if((scanline != pre_render_scanline) && (cycles > 64) && ( cycles < 257))
-            sprite_evaluation(); 
-
-        if((cycles > 256) && (cycles < 321))
-        {         
-            switch(cycles & 0x7)
-            {
-                case 1:
-                    sprite_y_coord = secondary_oam[(i * 4)];
-                    scanline_sprite_buffer[(i * 6) ] = sprite_y_coord;
-                    break;
-                case 2: 
-                    tile_id = secondary_oam[(i * 4) + 1];
-                    scanline_sprite_buffer[(i * 6) + 1] = tile_id;   
-                    break;
-                case 3:
-                    attribute_sprite = secondary_oam[(i * 4) + 2]; 
-                    scanline_sprite_buffer[(i * 6) + 2] = attribute_sprite;
-                    break;
-                case 4:
-                    scanline_sprite_buffer[(i * 6) + 3] = secondary_oam[(i * 4) + 3];
-                    break;
-                case 5: 
-                    break;
-                case 6:
-                case 0:
+            //Sprite evaluation for next scanline
+            if((scanline != pre_render_scanline) && (cycles > 64) && ( cycles < 257))
+                sprite_evaluation();
+            
+            //Sprite fetches
+            if((cycles > 256) && (cycles < 321))
+            {         
+                switch(cycles & 0x7)
                 {
-                    uint8_t fine_y = (scanline - sprite_y_coord);
-                    uint16_t address = 0x0000;
-
-                    if((attribute_sprite & 0x80) && (PPUCTRL & 0x20))
-                        address += 16;
-
-                    if(fine_y >= 8 && PPUCTRL & 0x20)
+                    case 1:
+                        sprite_y_coord = secondary_oam[(i * 4)];
+                        scanline_sprite_buffer[(i * 6) ] = sprite_y_coord;
+                        break;
+                    case 2: 
+                        tile_id = secondary_oam[(i * 4) + 1];
+                        scanline_sprite_buffer[(i * 6) + 1] = tile_id;   
+                        break;
+                    case 3:
+                        attribute_sprite = secondary_oam[(i * 4) + 2]; 
+                        scanline_sprite_buffer[(i * 6) + 2] = attribute_sprite;
+                        break;
+                    case 4:
+                        scanline_sprite_buffer[(i * 6) + 3] = secondary_oam[(i * 4) + 3];
+                        break;
+                    case 5: 
+                        break;
+                    case 6:
+                    case 0:
                     {
-                        if(attribute_sprite & 0x80)
-                            address -= 16;
-                        else
+                        uint8_t fine_y = (scanline - sprite_y_coord);
+                        uint16_t address = 0x0000;
+    
+                        if((attribute_sprite & 0x80) && (PPUCTRL & 0x20))
                             address += 16;
-                    }
+    
+                        if(fine_y >= 8 && PPUCTRL & 0x20)
+                        {
+                            if(attribute_sprite & 0x80)
+                                address -= 16;
+                            else
+                                address += 16;
+                        }
+                        
+                        
+                        if(attribute_sprite & 0x80)
+                            fine_y = 7 - (fine_y & 0x7);
+    
+                        //8x16 sprites
+                        if(PPUCTRL & 0x20)
+                            address += ((tile_id & 0x1) * 0x1000) + ((tile_id & 0xFE) * 16) + (fine_y & 0x7);
                     
+                        //8x8 sprites 
+                        else
+                            address = (((PPUCTRL & 0x8) > 0) * 0x1000) + (tile_id * 16) + (fine_y & 0x7);
+                                        
+    
+                        if((cycles & 0x7) == 0)
+                        {
+                            address += 8;
+                            scanline_sprite_buffer[(i * 6) + 5] = read(address);
+                            i++;
+                        }
+                        else
+                            scanline_sprite_buffer[(i * 6) + 4] = read(address);  
+    
+                        break;      
+                        }
                     
-                    if(attribute_sprite & 0x80)
-                        fine_y = 7 - (fine_y & 0x7);
+                    case 7: 
+                        break;
+                }            
+            }
 
-                    //8x16 sprites
-                    if(PPUCTRL & 0x20)
-                        address += ((tile_id & 0x1) * 0x1000) + ((tile_id & 0xFE) * 16) + (fine_y & 0x7);
-                
-                    //8x8 sprites 
-                    else
-                        address = (((PPUCTRL & 0x8) > 0) * 0x1000) + (tile_id * 16) + (fine_y & 0x7);
-                                    
-
-                    if((cycles & 0x7) == 0)
-                    {
-                        address += 8;
-                        scanline_sprite_buffer[(i * 6) + 5] = read(address);
-                        i++;
-                    }
-                    else
-                        scanline_sprite_buffer[(i * 6) + 4] = read(address);  
-
-                    break;      
-                    }
-                
-                case 7: 
-                    break;
-           }            
+            //Drawing sprites
+            if( (PPUMASK & 0x10)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
+                draw_sprite_pixel();
+            //Clearing OAMADDR
+            if( (cycles >= 257) && (cycles <= 320) )
+                OAMADDR = 0; 
         }
-
-        if( (PPUMASK & 0x10)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
-            draw_sprite_pixel();
-   
-        if( (cycles >= 257) && (cycles <= 320) )
-            OAMADDR = 0; 
     }
 
+    //When background is disabled draw the ext color
+    else if((scanline < 240) && cycles > 0 && cycles < 257)
+            draw_background_pixel();
+
     //Clearing secondary OAM
-    if((cycles > 0) && (cycles < 65) && (scanline != pre_render_scanline))
+    if((cycles > 0) && (cycles < 65) && (scanline < 240))
     {
         if(!(cycles & 1))
         {
@@ -170,15 +183,12 @@ void PPU::tick()
             secondary_oam_index++;
         }
     }
-
+    
+    //Clear vblank, sprite overflow and sprite 0 flag
     if((scanline == pre_render_scanline) && (cycles == 1))
         PPUSTATUS &= 0x1F;
-
-    if( (scanline < 240) && !is_rendering_enabled && cycles > 0 && cycles < 257)
-        draw_background_pixel();
     
-
-//--------------------------------------------------------------------------------------------------------------------------------------------- 
+    //Set vblank flag and fire NMI
     if( (scanline == 241) && (cycles == 1))
     {   
         if(!supress)
