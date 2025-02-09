@@ -27,7 +27,7 @@ PPU::~PPU() {}
 
 void PPU::tick()
 {
-    //Delay for toggling rendering
+    //Delay for toggling rendering, important for Battletoads
     if((is_rendering_enabled != IS_PPUMASK_SET(PPUMASK)))
     {
         toggling_rendering_counter--;
@@ -638,7 +638,7 @@ void PPU::increment_vert_v()
 
 void PPU::increment_v_ppudata()
 {
-    if(((scanline < 240) || (scanline == pre_render_scanline)) && IS_PPUMASK_SET(PPUMASK))
+    if(((scanline < 240) || (scanline == pre_render_scanline)) && is_rendering_enabled)
     {
         increment_hori_v();
         increment_vert_v();
@@ -757,6 +757,7 @@ void PPU::draw_background_pixel()
     // Update screen2 and screen arrays
     uint32_t index = scanline * 256 + (cycles - 1);
 
+    //if background is enabled in the leftmost 8 pixels...
     if( !(!(PPUMASK & 0x2) && ((cycles-1) < 8)) )
     {
         if((PPUMASK & 0x8))
@@ -769,15 +770,12 @@ void PPU::draw_background_pixel()
             screen[index] = system_palette[get_palette_color(0, 0)];
 
             if(!is_rendering_enabled && (v >= 0x3F00) && (v <= 0x3FFF))
-            {
-                if((v & 0x3) == 0x00)
-                    screen[index] = system_palette[frame_palette[v & 0xF]];    
-                else 
-                    screen[index] = system_palette[frame_palette[v & 0x1F]];              
-            }
+                    screen[index] = system_palette[read(v)];     
+            
             scanline_buffer[cycles - 1] = 0x00;            
         }
     }
+    
     else
     {
         screen[index] = system_palette[get_palette_color(0, 0)];

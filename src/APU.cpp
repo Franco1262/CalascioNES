@@ -1,9 +1,11 @@
 #include "APU.h"
 #include "Bus.h"
+#include <cmath>
 
 
 APU::APU()
 {
+    sequence_lookup_table = {0b01000000, 0b01100000, 0b01111000, 0b10011111};
 
 }
 APU::~APU()
@@ -25,51 +27,79 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
 {
     switch (address)
     {
-        case 4000:
+        case 0x4000:
             pulse1.volume = value & 0xF;
-            pulse1.const_volume = value & 0x10;
-            pulse1.envelope_loop = value & 0x20;
-            pulse1.duty = value & 0xC0;
+            pulse1.const_volume = (value & 0x10) > 0;
+            pulse1.envelope_loop = (value & 0x20) > 0;
+            pulse1.duty = (value & 0xC0) >> 6;           
             break;
-        case 4001:
+        case 0x4001:
             pulse1.shift = value & 0x7;
-            pulse1.negate = value & 0x8;
-            pulse1.period = value & 0x70;
-            pulse1.sweep_unit_enabled = value & 0x80;
+            pulse1.negate = (value & 0x8) > 0;
+            pulse1.period = (value & 0x70) >> 4;
+            pulse1.sweep_unit_enabled = (value & 0x80) > 0;
+
+            //Side effects of writing to this register
+            pulse1.reload_flag = true;
             break;
-        case 4002:
-            pulse1.timer_low = value;
+        case 0x4002:
+            pulse1.timer = (pulse1.timer & 0xFF00) | value;
+            pulse1.aux_timer = pulse1.timer;
             break;
-        case 4003:
-            pulse1.timer_high = value & 0x7;
-            pulse1.length_counter_load = value & 0xF8;
+        case 0x4003:
+            pulse1.timer = (pulse1.timer & 0x00FF) | ((value & 0x7) << 8);
+            pulse1.length_counter_load = (value & 0xF8) >> 3;
+            pulse1.aux_timer = pulse1.timer;
+
+            //Restart envelope
+            pulse1.envelope_decay_level_counter = 15;
+            //Side effects of writing to this register
+            pulse1.sequence_step = 0;
+            pulse1.start_flag = true;
             break;
-        case 4004:
+        case 0x4004:
             pulse2.volume = value & 0xF;
-            pulse2.const_volume = value & 0x10;
-            pulse2.envelope_loop = value & 0x20;
-            pulse2.duty = value & 0xC0;
+            pulse2.const_volume = (value & 0x10) > 0;
+            pulse2.envelope_loop = (value & 0x20) > 0;
+            pulse2.duty = (value & 0xC0) >> 6;          
             break;
-        case 4005:
+        case 0x4005:
             pulse2.shift = value & 0x7;
-            pulse2.negate = value & 0x8;
-            pulse2.period = value & 0x70;
-            pulse2.sweep_unit_enabled = value & 0x80;
+            pulse2.negate = (value & 0x8) > 0;
+            pulse2.period = (value & 0x70) >> 4;
+            pulse2.sweep_unit_enabled = (value & 0x80) > 0;
+
+            //Side effects of writing to this register
+            pulse2.reload_flag = true;
             break;
-        case 4006:
-            pulse2.timer_low = value;
+        case 0x4006:
+            pulse2.timer = (pulse2.timer & 0xFF00) | value;
+            pulse2.aux_timer = pulse2.timer;
             break;
-        case 4007:
-            pulse2.timer_high = value & 0x7;
-            pulse2.length_counter_load = value & 0xF8;
+        case 0x4007:
+            pulse2.timer = (pulse2.timer & 0x00FF) | ((value & 0x7) << 8);
+            pulse2.length_counter_load = (value & 0xF8) >> 3;
+            pulse2.aux_timer = pulse2.timer;
+            //Restart envelope
+            pulse2.envelope_decay_level_counter = 15;
+            //Side effects of writing to this register
+            pulse2.sequence_step = 0;
+            pulse2.start_flag = true;
             break;
         //Used for enabling and disabling individual channels
-        case 4015:
+        case 0x4015:
             status_register = value;
+            if (!(value & 0x01)) pulse1.length_counter_load = 0;
+            if (!(value & 0x02)) pulse2.length_counter_load = 0;
             break;
-        case 4017:
-            sequence_mode = value & 0x80;
-            inhibit_flag = value & 0x40;
+        case 0x4017:
+            sequence_mode = (value & 0x80) > 0;
+            inhibit_flag = (value & 0x40) > 0;
+            if(ceil(apu_cycles_counter) == apu_cycles_counter)
+                delay_write_to_frame_counter = 3;
+            else
+                delay_write_to_frame_counter = 4;
+            reset = true;
             break;
         default:
             break;
@@ -97,8 +127,18 @@ void APU::tick()
         {
             tick_frame_counter();  
         }
-    }
 
+        //Every apu cycle...
+        if(ceil(apu_cycles_counter) == apu_cycles_counter)
+            tick_pulse_timer();
+    }
+    delay_write_to_frame_counter--;
+    if(delay_write_to_frame_counter == 0 && reset)
+    {
+        sequence_step = 0.0;
+        apu_cycles_counter = 0.0;
+        reset = false;
+    }
 }
 
 void APU::tick_frame_counter()
@@ -114,6 +154,7 @@ void APU::tick_frame_counter()
             tick_envelope();
             //tick_linear_counter();
             tick_length_counter();
+            tick_sweep();
             sequence_step++;
             break;
         case 3:
@@ -127,7 +168,11 @@ void APU::tick_frame_counter()
             else
             {
                 tick_envelope();
+                tick_length_counter();
                 //tick_linear_counter();
+                tick_sweep();
+                if(!inhibit_flag)
+                    bus->apu_irq();
                 sequence_step = 0;
                 apu_cycles_counter = 0.0;
             }
@@ -136,8 +181,7 @@ void APU::tick_frame_counter()
             tick_envelope();
             //tick_linear_counter();
             tick_length_counter();
-            if(!inhibit_flag)
-                bus->apu_irq();
+            tick_sweep();
             sequence_step = 0;
             apu_cycles_counter = 0.0;
             break;
@@ -146,20 +190,180 @@ void APU::tick_frame_counter()
 
 void APU::tick_envelope()
 {
-    //If pulse1 enabled
-    if(status_register & 0x1)
+    if(!pulse1.start_flag)
     {
-        if(!pulse1.envelope_loop)
+        if(pulse1.envelope_divider == 0)
         {
-            
+            pulse1.envelope_divider = pulse1.volume;
+            if(pulse1.envelope_decay_level_counter != 0)
+                pulse1.envelope_decay_level_counter--;
+            else if(pulse1.envelope_loop)
+                pulse1.envelope_decay_level_counter = 15;          
         }
-
+        else
+            pulse1.envelope_divider--;
+    }
+    else
+    {
+        pulse1.start_flag = false;
+        pulse1.envelope_decay_level_counter = 15;
+        pulse1.envelope_divider = pulse1.volume;
     }
 
+    if(!pulse2.start_flag)
+    {
+        if(pulse2.envelope_divider == 0)
+        {
+            pulse2.envelope_divider = pulse2.volume;
+            if(pulse2.envelope_decay_level_counter != 0)
+                pulse2.envelope_decay_level_counter--;
+            else if(pulse2.envelope_loop)
+                    pulse2.envelope_decay_level_counter = 15;          
+        }
+        else
+            pulse2.envelope_divider--;
+    }
+    else
+    {
+        pulse2.start_flag = false;
+        pulse2.envelope_decay_level_counter = 15;
+        pulse2.envelope_divider = pulse2.volume;
+    } 
 }
+
 void APU::tick_length_counter()
 {
+    if(!pulse1.envelope_loop && (pulse1.length_counter_load != 0) && (status_register & 0x1))
+        pulse1.length_counter_load--;
 
+    if(!pulse2.envelope_loop && (pulse2.length_counter_load != 0) && (status_register & 0x2))
+        pulse2.length_counter_load--;
+}
+
+void APU::tick_pulse_timer()
+{
+    if(pulse1.timer == 0)
+    {
+        pulse1.timer = pulse1.aux_timer;
+        pulse1.sequencer_output = (sequence_lookup_table[pulse1.duty] >> (7 - pulse1.sequence_step)) & 0x1;
+        pulse1.sequence_step++;
+        if(pulse1.sequence_step == 8)
+            pulse1.sequence_step = 0;
+    }
+    else
+        pulse1.timer--;
+    
+    //if pulse2 enabled
+    if(pulse2.timer == 0)
+    {
+        pulse2.timer = pulse2.aux_timer;
+        pulse2.sequencer_output = (sequence_lookup_table[pulse2.duty] >> (7 - pulse2.sequence_step)) & 0x1;
+        pulse2.sequence_step++;
+        if(pulse2.sequence_step == 8)
+            pulse2.sequence_step = 0;
+    }
+    else
+        pulse2.timer--;
+    
+}
+
+//the pulse number is passed as parameter because the behaviour when change amount is negated differs from one another
+void APU::calculate_target_period_pulse(Pulse &pulse, int npulse)
+{
+    int16_t change_amount = pulse.timer >> pulse.shift;
+    int16_t aux_target_period = 0;
+
+    if(pulse.negate)
+    {
+        if(npulse == 1)
+            change_amount = (change_amount * -1) - 1;
+        else if(npulse == 2)
+            change_amount = change_amount * -1;
+    }
+
+    aux_target_period = pulse.timer + change_amount;
+    if(aux_target_period < 0)
+        aux_target_period = 0;
+
+    pulse.target_period = aux_target_period;
+
+}
+
+void APU::tick_sweep()
+{
+    calculate_target_period_pulse(pulse1, 1);
+    calculate_target_period_pulse(pulse2, 2);
+    //Pulse 1
+    if(pulse1.sweep_unit_enabled && (pulse1.shift > 0))
+    {
+        if(pulse1.sweep_divider_counter == 0)
+        {
+            //if sweep unit is not muting the channel
+            if(pulse1.timer >= 8 && pulse1.target_period <= 0x7FF)
+            {
+                pulse1.timer = pulse1.target_period;
+                pulse1.aux_timer = pulse1.timer;
+            }     
+        }
+    
+        if(pulse1.sweep_divider_counter == 0 || pulse1.reload_flag)
+        {
+            pulse1.sweep_divider_counter = pulse1.period;
+            pulse1.reload_flag = false;
+        }
+        else
+            pulse1.sweep_divider_counter--;
+    }
+
+    //Pulse 2
+    if(pulse2.sweep_unit_enabled && (pulse2.shift > 0))
+    {
+        if(pulse2.sweep_divider_counter == 0)
+        {
+            //if sweep unit is not muting the channel
+            if(pulse2.timer >= 8 && pulse2.target_period <= 0x7FF)
+            {
+                pulse2.timer = pulse2.target_period;
+                pulse2.aux_timer = pulse2.timer;
+            }      
+        }
+    
+        if(pulse2.sweep_divider_counter == 0 || pulse2.reload_flag)
+        {
+            pulse2.sweep_divider_counter = pulse2.period;
+            pulse2.reload_flag = false;
+        }
+        else
+            pulse2.sweep_divider_counter--;
+    }
+}
+
+double APU::get_output()
+{
+    double pulse1_output = 0;
+    double pulse2_output = 0;
+    double pulse_output = 0;
+
+    if(pulse1.sequencer_output == 1 && pulse1.target_period <= 0x7FF && pulse1.timer >= 8 && pulse1.length_counter_load > 0 && (status_register & 0x1))
+    {
+        if(pulse1.const_volume)
+            pulse1_output = pulse1.volume;
+        else
+            pulse1_output = pulse1.envelope_decay_level_counter;
+    }
+    if(pulse2.sequencer_output == 1 && pulse2.target_period <= 0x7FF && pulse2.timer >= 8 && pulse2.length_counter_load > 0 && (status_register & 0x2))
+    {
+        if(pulse2.const_volume)
+            pulse2_output = pulse2.volume;
+        else
+            pulse2_output = pulse2.envelope_decay_level_counter;
+    }
+    if(pulse1_output == 0 && pulse2_output == 0)
+        pulse_output = 0;
+    else
+        pulse_output = (95.88 / ((8128 / (pulse1_output + pulse2_output)) + 100));
+
+    return  pulse_output;
 }
 
 void APU::connect_bus(std::shared_ptr<Bus> bus)

@@ -145,11 +145,9 @@ void Bus::cpu_writes(uint16_t address, uint8_t value)
                 shift_register_controller1 = state & 0xFF;
             }    
         }
-    }
-
-    else if(address >= 0x4000 && address <= 0x4017)
-        apu->cpu_writes(address, value);
-    
+        else
+            apu->cpu_writes(address, value);
+    } 
 
     else if ((address >= 0x4020) && (address <= 0xFFFF))
         cart->cpu_writes(address, value);   

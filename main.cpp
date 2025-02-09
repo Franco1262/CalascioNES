@@ -11,7 +11,7 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
-
+#include <mutex>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
@@ -20,6 +20,26 @@ constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
 
+std::vector<int16_t> audio_buffer;  // Buffer to hold audio samples
+
+std::mutex audio_mutex;
+
+void audio_callback(void* userdata, Uint8* stream, int len) {
+    int16_t* output = reinterpret_cast<int16_t*>(stream);
+    int samples_needed = len / sizeof(int16_t);
+
+    std::lock_guard<std::mutex> lock(audio_mutex);  // Lock the buffer while modifying it
+
+    for (int i = 0; i < samples_needed; ++i) {
+        if (!audio_buffer.empty()) {
+            output[i] = audio_buffer.front();
+            audio_buffer.erase(audio_buffer.begin());
+        } else {
+            output[i] = 0;
+        }
+    }
+}
+
 class SDL_manager
 {
     public:
@@ -27,7 +47,7 @@ class SDL_manager
         {
             SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
             // Initialize SDL
-            if (SDL_Init(SDL_INIT_VIDEO) < 0)
+            if ((SDL_Init(SDL_INIT_VIDEO) | SDL_Init(SDL_INIT_AUDIO)) < 0)
             {
                 std::cerr << "Couldn't initialize SDL: " << SDL_GetError() << std::endl;
                 exit(1);
@@ -48,6 +68,22 @@ class SDL_manager
                 std::cerr << "Failed to create renderer: " << SDL_GetError() << std::endl;
                 exit(1);
             }
+
+            SDL_AudioSpec desired_spec{};
+            desired_spec.freq = 44100;         // 44.1 kHz sample rate
+            desired_spec.format = AUDIO_S16SYS; // 16-bit signed samples
+            desired_spec.channels = 1;         // Mono audio
+            desired_spec.samples = 4096;        // Buffer size (lower = less latency)
+            desired_spec.callback = audio_callback;
+        
+            auto audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);
+            if (audio_device == 0) {
+                std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
+                exit(1);
+            }
+            
+            SDL_PauseAudioDevice(audio_device, 0);
+            
         }
         ~SDL_manager()
         {
@@ -120,6 +156,15 @@ class NES
                 }
                 cpu->tick();
                 apu->tick();
+                sample += apu->get_output();
+                counter++;
+                if(counter == 41)
+                {
+                    sample = sample / 41;
+                    audio_buffer.push_back(sample * 32767);
+                    counter = 0;
+                    sample = 0;
+                }
             }      
         }
 
@@ -219,6 +264,8 @@ class NES
         std::string old_game_filename;
         std::string log;
         bool zapper_connected = false;
+        double sample = 0;
+        int counter = 0;
 
 };
 
