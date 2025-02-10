@@ -46,6 +46,7 @@ class APU
         void calculate_target_period_pulse(Pulse &pulse, int npulse);
 
         std::vector<uint8_t> sequence_lookup_table;
+        std::vector<uint8_t> length_counter_lookup_table;
         
         float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;

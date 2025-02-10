@@ -6,7 +6,13 @@
 APU::APU()
 {
     sequence_lookup_table = {0b01000000, 0b01100000, 0b01111000, 0b10011111};
-
+    length_counter_lookup_table = 
+    {
+        10, 254, 20, 2, 40, 4, 80, 6,
+        160, 8, 60, 10, 14, 12, 26, 14,
+        12, 16, 24, 18, 48, 20, 96, 22,
+        192, 24, 72, 26, 16, 28, 32, 30
+    };
 }
 APU::~APU()
 {
@@ -48,11 +54,12 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4003:
             pulse1.timer = (pulse1.timer & 0x00FF) | ((value & 0x7) << 8);
-            pulse1.length_counter_load = (value & 0xF8) >> 3;
+            pulse1.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             pulse1.aux_timer = pulse1.timer;
 
             //Restart envelope
             pulse1.envelope_decay_level_counter = 15;
+            pulse1.envelope_divider = pulse1.volume;
             //Side effects of writing to this register
             pulse1.sequence_step = 0;
             pulse1.start_flag = true;
@@ -78,10 +85,11 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4007:
             pulse2.timer = (pulse2.timer & 0x00FF) | ((value & 0x7) << 8);
-            pulse2.length_counter_load = (value & 0xF8) >> 3;
+            pulse2.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             pulse2.aux_timer = pulse2.timer;
             //Restart envelope
             pulse2.envelope_decay_level_counter = 15;
+            pulse2.envelope_divider = pulse2.volume;
             //Side effects of writing to this register
             pulse2.sequence_step = 0;
             pulse2.start_flag = true;
@@ -291,6 +299,7 @@ void APU::calculate_target_period_pulse(Pulse &pulse, int npulse)
 
 void APU::tick_sweep()
 {
+    //Sweep unit is countinuosly calculating the target period even if disabled
     calculate_target_period_pulse(pulse1, 1);
     calculate_target_period_pulse(pulse2, 2);
     //Pulse 1
