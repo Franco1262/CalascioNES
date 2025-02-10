@@ -4,25 +4,31 @@
 
 struct Pulse
 {
-    uint8_t duty = 0;
-    bool envelope_loop = 0;
-    bool const_volume = 0;
-    uint8_t volume = 0; //envelope
-    bool sweep_unit_enabled = 0;
-    uint8_t period = 0;
-    uint8_t target_period = 0; // calculated by the sweep unit
-    bool negate = 0;
-    uint8_t shift = 0;
-    uint8_t length_counter_load = 0;
-    uint16_t timer = 0;
-    uint16_t aux_timer = 0;
-    uint8_t sequence_step = 0;
-    bool sequencer_output = 0;
-    uint8_t sweep_divider_counter = 0;
-    bool reload_flag = false;
+    //Envelope unit
     bool start_flag = false;
     uint8_t envelope_divider = 0;
     uint8_t envelope_decay_level_counter = 0;
+    uint8_t volume = 0; //envelope
+
+    //Sweep unit
+    uint8_t sweep_divider_counter = 0;
+    bool reload_flag = false;
+    bool negate = 0;
+    uint8_t shift = 0;
+    bool sweep_unit_enabled = 0;
+    uint8_t period = 0;
+    uint16_t target_period = 0; // calculated by the sweep unit
+
+    uint8_t duty = 0;
+    bool envelope_loop = 0;
+    bool const_volume = 0;
+
+
+    uint8_t length_counter_load = 0;
+    uint16_t timer_divider = 0;
+    uint16_t timer = 0;
+    uint8_t sequence_step = 0;
+    bool sequencer_output = 0;
 };
 
 class Bus;

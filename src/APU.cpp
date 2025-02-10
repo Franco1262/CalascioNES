@@ -25,7 +25,7 @@ ________________________________________________________________________________
 $4000 / $4004 |	DDLC VVVV |	Duty (D), envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
 $4001 / $4005 |	EPPP NSSS |	Sweep unit: enabled (E), period (P), negate (N), shift (S)
 $4002 / $4006 |	TTTT TTTT |	Timer low (T)
-$4003 / $4007 |	LLLL LTTT |	Length counter load (L), timer high (T)
+$4003 / $4007 |	LLLL LTTT |	Length counter load (L), timer_divider high (T)
 ________________________________________________________________________________________________________________________
 */
 
@@ -50,12 +50,10 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4002:
             pulse1.timer = (pulse1.timer & 0xFF00) | value;
-            pulse1.aux_timer = pulse1.timer;
             break;
         case 0x4003:
             pulse1.timer = (pulse1.timer & 0x00FF) | ((value & 0x7) << 8);
             pulse1.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
-            pulse1.aux_timer = pulse1.timer;
 
             //Restart envelope
             pulse1.envelope_decay_level_counter = 15;
@@ -81,12 +79,10 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4006:
             pulse2.timer = (pulse2.timer & 0xFF00) | value;
-            pulse2.aux_timer = pulse2.timer;
             break;
         case 0x4007:
             pulse2.timer = (pulse2.timer & 0x00FF) | ((value & 0x7) << 8);
             pulse2.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
-            pulse2.aux_timer = pulse2.timer;
             //Restart envelope
             pulse2.envelope_decay_level_counter = 15;
             pulse2.envelope_divider = pulse2.volume;
@@ -130,15 +126,15 @@ void APU::tick()
     apu_cycles_counter += 0.5;
     if(!region) // NTSC mode
     {
+        //Every apu cycle...
+        if(ceil(apu_cycles_counter) == apu_cycles_counter)
+            tick_pulse_timer();
+            
         if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
             apu_cycles_counter == 14914.5 || apu_cycles_counter == 18640.5)
         {
             tick_frame_counter();  
         }
-
-        //Every apu cycle...
-        if(ceil(apu_cycles_counter) == apu_cycles_counter)
-            tick_pulse_timer();
     }
     delay_write_to_frame_counter--;
     if(delay_write_to_frame_counter == 0 && reset)
@@ -146,6 +142,13 @@ void APU::tick()
         sequence_step = 0.0;
         apu_cycles_counter = 0.0;
         reset = false;
+        if(sequence_mode)
+        {
+            tick_envelope();
+            tick_sweep();
+            tick_length_counter();
+            //tick_linear_counter();
+        }
     }
 }
 
@@ -250,29 +253,28 @@ void APU::tick_length_counter()
 
 void APU::tick_pulse_timer()
 {
-    if(pulse1.timer == 0)
+    if(pulse1.timer_divider == 0)
     {
-        pulse1.timer = pulse1.aux_timer;
+        pulse1.timer_divider = pulse1.timer;
         pulse1.sequencer_output = (sequence_lookup_table[pulse1.duty] >> (7 - pulse1.sequence_step)) & 0x1;
         pulse1.sequence_step++;
         if(pulse1.sequence_step == 8)
             pulse1.sequence_step = 0;
     }
     else
-        pulse1.timer--;
+        pulse1.timer_divider--;
     
     //if pulse2 enabled
-    if(pulse2.timer == 0)
+    if(pulse2.timer_divider == 0)
     {
-        pulse2.timer = pulse2.aux_timer;
+        pulse2.timer_divider = pulse2.timer;
         pulse2.sequencer_output = (sequence_lookup_table[pulse2.duty] >> (7 - pulse2.sequence_step)) & 0x1;
         pulse2.sequence_step++;
         if(pulse2.sequence_step == 8)
             pulse2.sequence_step = 0;
     }
     else
-        pulse2.timer--;
-    
+        pulse2.timer_divider--;
 }
 
 //the pulse number is passed as parameter because the behaviour when change amount is negated differs from one another
@@ -294,7 +296,6 @@ void APU::calculate_target_period_pulse(Pulse &pulse, int npulse)
         aux_target_period = 0;
 
     pulse.target_period = aux_target_period;
-
 }
 
 void APU::tick_sweep()
@@ -305,16 +306,10 @@ void APU::tick_sweep()
     //Pulse 1
     if(pulse1.sweep_unit_enabled && (pulse1.shift > 0))
     {
-        if(pulse1.sweep_divider_counter == 0)
-        {
-            //if sweep unit is not muting the channel
-            if(pulse1.timer >= 8 && pulse1.target_period <= 0x7FF)
-            {
-                pulse1.timer = pulse1.target_period;
-                pulse1.aux_timer = pulse1.timer;
-            }     
-        }
-    
+        //if sweep unit is not muting the channel
+        if((pulse1.target_period <= 0x7FF) && ((pulse1.sweep_divider_counter == 0)))
+            pulse1.timer = pulse1.target_period; 
+            
         if(pulse1.sweep_divider_counter == 0 || pulse1.reload_flag)
         {
             pulse1.sweep_divider_counter = pulse1.period;
@@ -327,16 +322,10 @@ void APU::tick_sweep()
     //Pulse 2
     if(pulse2.sweep_unit_enabled && (pulse2.shift > 0))
     {
-        if(pulse2.sweep_divider_counter == 0)
-        {
-            //if sweep unit is not muting the channel
-            if(pulse2.timer >= 8 && pulse2.target_period <= 0x7FF)
-            {
-                pulse2.timer = pulse2.target_period;
-                pulse2.aux_timer = pulse2.timer;
-            }      
-        }
-    
+        //if sweep unit is not muting the channel
+        if((pulse2.sweep_divider_counter == 0) && (pulse2.target_period <= 0x7FF))
+            pulse2.timer = pulse2.target_period;
+
         if(pulse2.sweep_divider_counter == 0 || pulse2.reload_flag)
         {
             pulse2.sweep_divider_counter = pulse2.period;
@@ -367,6 +356,7 @@ double APU::get_output()
         else
             pulse2_output = pulse2.envelope_decay_level_counter;
     }
+    
     if(pulse1_output == 0 && pulse2_output == 0)
         pulse_output = 0;
     else
