@@ -59,7 +59,7 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             pulse1.envelope_decay_level_counter = 15;
             pulse1.envelope_divider = pulse1.volume;
             //Side effects of writing to this register
-            pulse1.sequence_step = 0;
+            pulse1.sequence_step = 7;
             pulse1.start_flag = true;
             break;
         case 0x4004:
@@ -87,7 +87,7 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             pulse2.envelope_decay_level_counter = 15;
             pulse2.envelope_divider = pulse2.volume;
             //Side effects of writing to this register
-            pulse2.sequence_step = 0;
+            pulse2.sequence_step = 7;
             pulse2.start_flag = true;
             break;
         //Used for enabling and disabling individual channels
@@ -156,24 +156,24 @@ void APU::tick_frame_counter()
 {
     switch (sequence_step)
     {
-        case 1:
+        case 0:
             tick_envelope();
             //tick_linear_counter();
             sequence_step++;
             break;
-        case 2:
+        case 1:
             tick_envelope();
             //tick_linear_counter();
             tick_length_counter();
             tick_sweep();
             sequence_step++;
             break;
-        case 3:
+        case 2:
             tick_envelope();
             //tick_linear_counter();
             sequence_step++; 
             break;
-        case 4:
+        case 3:
             if(sequence_mode)
                 sequence_step++;
             else
@@ -188,7 +188,7 @@ void APU::tick_frame_counter()
                 apu_cycles_counter = 0.0;
             }
             break;
-        case 5:
+        case 4:
             tick_envelope();
             //tick_linear_counter();
             tick_length_counter();
@@ -244,10 +244,10 @@ void APU::tick_envelope()
 
 void APU::tick_length_counter()
 {
-    if(!pulse1.envelope_loop && (pulse1.length_counter_load != 0) && (status_register & 0x1))
+    if(!pulse1.envelope_loop && (pulse1.length_counter_load != 0))
         pulse1.length_counter_load--;
 
-    if(!pulse2.envelope_loop && (pulse2.length_counter_load != 0) && (status_register & 0x2))
+    if(!pulse2.envelope_loop && (pulse2.length_counter_load != 0))
         pulse2.length_counter_load--;
 }
 
@@ -256,10 +256,11 @@ void APU::tick_pulse_timer()
     if(pulse1.timer_divider == 0)
     {
         pulse1.timer_divider = pulse1.timer;
-        pulse1.sequencer_output = (sequence_lookup_table[pulse1.duty] >> (7 - pulse1.sequence_step)) & 0x1;
-        pulse1.sequence_step++;
-        if(pulse1.sequence_step == 8)
-            pulse1.sequence_step = 0;
+        pulse1.sequencer_output = (sequence_lookup_table[pulse1.duty] >> pulse1.sequence_step) & 0x1;
+        if(pulse1.sequence_step == 0)
+            pulse1.sequence_step = 7;
+        else
+            pulse1.sequence_step--;
     }
     else
         pulse1.timer_divider--;
@@ -268,10 +269,11 @@ void APU::tick_pulse_timer()
     if(pulse2.timer_divider == 0)
     {
         pulse2.timer_divider = pulse2.timer;
-        pulse2.sequencer_output = (sequence_lookup_table[pulse2.duty] >> (7 - pulse2.sequence_step)) & 0x1;
-        pulse2.sequence_step++;
-        if(pulse2.sequence_step == 8)
-            pulse2.sequence_step = 0;
+        pulse2.sequencer_output = (sequence_lookup_table[pulse2.duty] >> pulse2.sequence_step) & 0x1;
+        if(pulse2.sequence_step == 0)
+            pulse2.sequence_step = 7;
+        else
+            pulse2.sequence_step--;
     }
     else
         pulse2.timer_divider--;
@@ -307,7 +309,7 @@ void APU::tick_sweep()
     if(pulse1.sweep_unit_enabled && (pulse1.shift > 0))
     {
         //if sweep unit is not muting the channel
-        if((pulse1.target_period <= 0x7FF) && ((pulse1.sweep_divider_counter == 0)))
+        if((pulse1.target_period <= 0x7FF) && ((pulse1.sweep_divider_counter == 0)) && (pulse1.timer >= 8))
             pulse1.timer = pulse1.target_period; 
             
         if(pulse1.sweep_divider_counter == 0 || pulse1.reload_flag)
@@ -323,7 +325,7 @@ void APU::tick_sweep()
     if(pulse2.sweep_unit_enabled && (pulse2.shift > 0))
     {
         //if sweep unit is not muting the channel
-        if((pulse2.sweep_divider_counter == 0) && (pulse2.target_period <= 0x7FF))
+        if((pulse2.sweep_divider_counter == 0) && (pulse2.target_period <= 0x7FF) && (pulse2.timer >= 8))
             pulse2.timer = pulse2.target_period;
 
         if(pulse2.sweep_divider_counter == 0 || pulse2.reload_flag)

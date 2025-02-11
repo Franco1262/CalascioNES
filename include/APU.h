@@ -27,7 +27,7 @@ struct Pulse
     uint8_t length_counter_load = 0;
     uint16_t timer_divider = 0;
     uint16_t timer = 0;
-    uint8_t sequence_step = 0;
+    uint8_t sequence_step = 7;
     bool sequencer_output = 0;
 };
 
@@ -60,7 +60,7 @@ class APU
         uint8_t status_register = 0;
         bool sequence_mode = 0;
         bool inhibit_flag = 0;
-        uint8_t sequence_step = 1;
+        uint8_t sequence_step = 0;
         bool region = 0; //0 NTSC |  1 PAL
 
         uint8_t delay_write_to_frame_counter = 0.0;
