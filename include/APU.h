@@ -41,6 +41,7 @@ struct Triangle
     uint16_t divider = 0;
     uint8_t sequence_step = 0;
     uint8_t linear_counter_divider = 0;
+    uint8_t last_output;
 
 };
 

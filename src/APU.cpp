@@ -240,7 +240,7 @@ void APU::tick_triangle_timer()
     if(triangle.divider == 0)
     {
         triangle.divider = triangle.timer;
-        if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0))
+        if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0) && (triangle.timer >= 2) && (triangle.timer < 0x7FE))
         {
             triangle.sequence_step++;
             if(triangle.sequence_step == 32)
@@ -420,16 +420,12 @@ double APU::get_output()
     if(pulse1_output != 0 || pulse2_output != 0)
         pulse_output = (95.88 / ((8128 / (pulse1_output + pulse2_output)) + 100));
 
+    triangle_sample = triangle_sequence[triangle.sequence_step];
 
-    if(triangle.timer <= 1)
-        triangle_sample = 7.5;
-    else
-        triangle_sample = triangle_sequence[triangle.sequence_step];
-
-    if(triangle_sample != 0)
-        tnd_output = 159.79 / ((1 / (triangle_sample / 8227)) + 100);
-
-    output = tnd_output + pulse_output;
+    tnd_output = 159.79 / ((1 / (triangle_sample / 8227)) + 100);
+    
+        
+    output = tnd_output;
         
     return  output;
 }
