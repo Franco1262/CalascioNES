@@ -100,14 +100,14 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4008:
             triangle.linear_counter_load = value & 0x7F;
-            triangle.length_counter_halt = value & 0x8;
+            triangle.length_counter_halt = value & 0x80;
             break;
         case 0x400A:
             triangle.timer = (triangle.timer & 0xFF00) | value;
             break;
         case 0x400B:
             triangle.timer = (triangle.timer & 0x00FF) | ((value & 0x7) << 8);
-            triangle.length_counter_load = ((value & 0xF8) >> 3);
+            triangle.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             triangle.linear_counter_reload = true;
             break;
         //Used for enabling and disabling individual channels
@@ -225,14 +225,14 @@ void APU::tick_frame_counter()
 
 void APU::tick_linear_counter()
 {
+
     if(triangle.linear_counter_reload)
-        triangle.linear_counter_divider = triangle.length_counter_load;
+        triangle.linear_counter_divider = triangle.linear_counter_load;
     else if(triangle.linear_counter_divider != 0)
         triangle.linear_counter_divider--;
     
     if(!triangle.length_counter_halt)
         triangle.linear_counter_reload = false;
-
 }
 
 void APU::tick_triangle_timer()
@@ -242,7 +242,6 @@ void APU::tick_triangle_timer()
         triangle.divider = triangle.timer;
         if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0))
         {
-            triangle.sequence_value = triangle_sequence[triangle.sequence_step];
             triangle.sequence_step++;
             if(triangle.sequence_step == 32)
                 triangle.sequence_step = 0;
@@ -418,28 +417,18 @@ double APU::get_output()
             pulse2_output = pulse2.envelope_decay_level_counter;
     }
     
-    if(pulse1_output == 0 && pulse2_output == 0)
-        pulse_output = 0;
-    else
+    if(pulse1_output != 0 || pulse2_output != 0)
         pulse_output = (95.88 / ((8128 / (pulse1_output + pulse2_output)) + 100));
 
-    if (triangle.length_counter_load > 0 && triangle.linear_counter_divider > 0 && status_register & 0x4)
-    {
-        // Check for very high frequency (timer 0 or 1) producing a 7.5 average.
-        if (triangle.timer <= 1)
-            triangle_sample = 7.5;
-        else
-            triangle_sample = triangle.sequence_value;
-    }
+
+    if(triangle.timer <= 1)
+        triangle_sample = 7.5;
     else
-        triangle_sample = 0;
-    
-    if(triangle_sample == 0)
-        tnd_output = 0;
-    else
+        triangle_sample = triangle_sequence[triangle.sequence_step];
+
+    if(triangle_sample != 0)
         tnd_output = 159.79 / ((1 / (triangle_sample / 8227)) + 100);
 
-    pulse_output = 0;
     output = tnd_output + pulse_output;
         
     return  output;
