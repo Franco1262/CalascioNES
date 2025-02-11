@@ -13,6 +13,14 @@ APU::APU()
         12, 16, 24, 18, 48, 20, 96, 22,
         192, 24, 72, 26, 16, 28, 32, 30
     };
+
+    triangle_sequence = 
+    {
+        15, 14, 13, 12, 11, 10,  9,  8,
+         7,  6,  5,  4,  3,  2,  1,  0,
+         0,  1,  2,  3,  4,  5,  6,  7,
+         8,  9, 10, 11, 12, 13, 14, 15
+    };
 }
 APU::~APU()
 {
@@ -90,11 +98,24 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             pulse2.sequence_step = 7;
             pulse2.start_flag = true;
             break;
+        case 0x4008:
+            triangle.linear_counter_load = value & 0x7F;
+            triangle.length_counter_halt = value & 0x8;
+            break;
+        case 0x400A:
+            triangle.timer = (triangle.timer & 0xFF00) | value;
+            break;
+        case 0x400B:
+            triangle.timer = (triangle.timer & 0x00FF) | ((value & 0x7) << 8);
+            triangle.length_counter_load = ((value & 0xF8) >> 3);
+            triangle.linear_counter_reload = true;
+            break;
         //Used for enabling and disabling individual channels
         case 0x4015:
             status_register = value;
             if (!(value & 0x01)) pulse1.length_counter_load = 0;
             if (!(value & 0x02)) pulse2.length_counter_load = 0;
+            if (!(value & 0x04)) triangle.length_counter_load = 0;
             break;
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
@@ -135,6 +156,9 @@ void APU::tick()
         {
             tick_frame_counter();  
         }
+
+        //On every cpu cycle clock triangle's timer
+        tick_triangle_timer();
     }
     delay_write_to_frame_counter--;
     if(delay_write_to_frame_counter == 0 && reset)
@@ -147,7 +171,7 @@ void APU::tick()
             tick_envelope();
             tick_sweep();
             tick_length_counter();
-            //tick_linear_counter();
+            tick_linear_counter();
         }
     }
 }
@@ -158,19 +182,19 @@ void APU::tick_frame_counter()
     {
         case 0:
             tick_envelope();
-            //tick_linear_counter();
+            tick_linear_counter();
             sequence_step++;
             break;
         case 1:
             tick_envelope();
-            //tick_linear_counter();
+            tick_linear_counter();
             tick_length_counter();
             tick_sweep();
             sequence_step++;
             break;
         case 2:
             tick_envelope();
-            //tick_linear_counter();
+            tick_linear_counter();
             sequence_step++; 
             break;
         case 3:
@@ -180,7 +204,7 @@ void APU::tick_frame_counter()
             {
                 tick_envelope();
                 tick_length_counter();
-                //tick_linear_counter();
+                tick_linear_counter();
                 tick_sweep();
                 if(!inhibit_flag)
                     bus->apu_irq();
@@ -190,13 +214,42 @@ void APU::tick_frame_counter()
             break;
         case 4:
             tick_envelope();
-            //tick_linear_counter();
+            tick_linear_counter();
             tick_length_counter();
             tick_sweep();
             sequence_step = 0;
             apu_cycles_counter = 0.0;
             break;
     }
+}
+
+void APU::tick_linear_counter()
+{
+    if(triangle.linear_counter_reload)
+        triangle.linear_counter_divider = triangle.length_counter_load;
+    else if(triangle.linear_counter_divider != 0)
+        triangle.linear_counter_divider--;
+    
+    if(!triangle.length_counter_halt)
+        triangle.linear_counter_reload = false;
+
+}
+
+void APU::tick_triangle_timer()
+{
+    if(triangle.divider == 0)
+    {
+        triangle.divider = triangle.timer;
+        if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0))
+        {
+            triangle.sequence_value = triangle_sequence[triangle.sequence_step];
+            triangle.sequence_step++;
+            if(triangle.sequence_step == 32)
+                triangle.sequence_step = 0;
+        }
+    }
+    else
+        triangle.divider--;   
 }
 
 void APU::tick_envelope()
@@ -249,6 +302,9 @@ void APU::tick_length_counter()
 
     if(!pulse2.envelope_loop && (pulse2.length_counter_load != 0))
         pulse2.length_counter_load--;
+
+    if(!triangle.length_counter_halt && (triangle.length_counter_load != 0))
+        triangle.length_counter_load--;
 }
 
 void APU::tick_pulse_timer()
@@ -343,6 +399,9 @@ double APU::get_output()
     double pulse1_output = 0;
     double pulse2_output = 0;
     double pulse_output = 0;
+    double tnd_output = 0;
+    double output = 0;
+    double triangle_sample = 0;
 
     if(pulse1.sequencer_output == 1 && pulse1.target_period <= 0x7FF && pulse1.timer >= 8 && pulse1.length_counter_load > 0 && (status_register & 0x1))
     {
@@ -364,7 +423,26 @@ double APU::get_output()
     else
         pulse_output = (95.88 / ((8128 / (pulse1_output + pulse2_output)) + 100));
 
-    return  pulse_output;
+    if (triangle.length_counter_load > 0 && triangle.linear_counter_divider > 0 && status_register & 0x4)
+    {
+        // Check for very high frequency (timer 0 or 1) producing a 7.5 average.
+        if (triangle.timer <= 1)
+            triangle_sample = 7.5;
+        else
+            triangle_sample = triangle.sequence_value;
+    }
+    else
+        triangle_sample = 0;
+    
+    if(triangle_sample == 0)
+        tnd_output = 0;
+    else
+        tnd_output = 159.79 / ((1 / (triangle_sample / 8227)) + 100);
+
+    pulse_output = 0;
+    output = tnd_output + pulse_output;
+        
+    return  output;
 }
 
 void APU::connect_bus(std::shared_ptr<Bus> bus)

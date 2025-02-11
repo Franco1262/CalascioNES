@@ -31,6 +31,20 @@ struct Pulse
     bool sequencer_output = 0;
 };
 
+struct Triangle
+{
+    uint8_t linear_counter_load = 0;
+    bool length_counter_halt = false;
+    uint8_t length_counter_load = 0;
+    bool linear_counter_reload = false;
+    uint16_t timer = 0;
+    uint16_t divider = 0;
+    uint8_t sequence_step = 0;
+    uint8_t sequence_value = 0;
+    uint8_t linear_counter_divider = 0;
+
+};
+
 class Bus;
 class APU
 {
@@ -50,13 +64,17 @@ class APU
         void tick_pulse_timer();
         void tick_sweep();
         void calculate_target_period_pulse(Pulse &pulse, int npulse);
+        void tick_triangle_timer();
+        void tick_linear_counter();
 
         std::vector<uint8_t> sequence_lookup_table;
         std::vector<uint8_t> length_counter_lookup_table;
+        std::vector<uint8_t> triangle_sequence;
         
         float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;
         Pulse pulse1, pulse2;
+        Triangle triangle;
         uint8_t status_register = 0;
         bool sequence_mode = 0;
         bool inhibit_flag = 0;
