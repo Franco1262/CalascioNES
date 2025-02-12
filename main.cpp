@@ -73,7 +73,7 @@ class SDL_manager
             desired_spec.freq = 44100;         // 44.1 kHz sample rate
             desired_spec.format = AUDIO_S16SYS; // 16-bit signed samples
             desired_spec.channels = 1;         // Mono audio
-            desired_spec.samples = 4096;        // Buffer size (lower = less latency)
+            desired_spec.samples = 8192;        // Buffer size (lower = less latency)
             desired_spec.callback = audio_callback;
         
             auto audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);

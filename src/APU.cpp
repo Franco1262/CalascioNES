@@ -21,6 +21,13 @@ APU::APU()
          0,  1,  2,  3,  4,  5,  6,  7,
          8,  9, 10, 11, 12, 13, 14, 15
     };
+
+    ntsc_noise_period = 
+    {
+        4, 8, 16, 32, 64, 96, 128, 160, 
+        202, 254, 380, 508, 762, 1016, 2034, 4068
+    };
+    
 }
 APU::~APU()
 {
@@ -110,6 +117,19 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             triangle.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             triangle.linear_counter_reload = true;
             break;
+        case 0x400C:
+            noise.volume = value & 0xF;
+            noise.const_volume = value & 0x10;
+            noise.envelope_loop = value & 0x20;
+            break;
+        case 0x400E:
+            noise.noise_period = value & 0xF;
+            noise.timer = ntsc_noise_period[noise.noise_period];
+            noise.loop_noise = value & 0x80;
+            break;
+        case 0x400F:
+            noise.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            break;
         //Used for enabling and disabling individual channels
         case 0x4015:
             status_register = value;
@@ -149,7 +169,7 @@ void APU::tick()
     {
         //Every apu cycle...
         if(ceil(apu_cycles_counter) == apu_cycles_counter)
-            tick_pulse_timer();
+            tick_timers();
             
         if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
             apu_cycles_counter == 14914.5 || apu_cycles_counter == 18640.5)
@@ -241,11 +261,7 @@ void APU::tick_triangle_timer()
     {
         triangle.divider = triangle.timer;
         if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0) && (triangle.timer >= 2) && (triangle.timer < 0x7FE))
-        {
-            triangle.sequence_step++;
-            if(triangle.sequence_step == 32)
-                triangle.sequence_step = 0;
-        }
+            triangle.sequence_step = (triangle.sequence_step + 1) & 31;
     }
     else
         triangle.divider--;   
@@ -304,9 +320,12 @@ void APU::tick_length_counter()
 
     if(!triangle.length_counter_halt && (triangle.length_counter_load != 0))
         triangle.length_counter_load--;
+    
+    if(!noise.envelope_loop && (noise.length_counter_load != 0))
+        noise.length_counter_load--;
 }
 
-void APU::tick_pulse_timer()
+void APU::tick_timers()
 {
     if(pulse1.timer_divider == 0)
     {
@@ -401,6 +420,7 @@ double APU::get_output()
     double tnd_output = 0;
     double output = 0;
     double triangle_sample = 0;
+    double noise_sample = 0;
 
     if(pulse1.sequencer_output == 1 && pulse1.target_period <= 0x7FF && pulse1.timer >= 8 && pulse1.length_counter_load > 0 && (status_register & 0x1))
     {
@@ -422,7 +442,15 @@ double APU::get_output()
 
     triangle_sample = triangle_sequence[triangle.sequence_step];
 
-    tnd_output = 159.79 / ((1 / (triangle_sample / 8227)) + 100);
+    if(!(noise.shift_register & 0x1) && noise.length_counter_load != 0)
+    {
+        if(noise.const_volume)
+            noise_sample = noise.volume;
+        else
+            noise_sample = noise.envelope_decay_level_counter;      
+    }
+
+    tnd_output = 159.79 / ((1 / (triangle_sample / 8227) + (noise_sample / 12241)) + 100);
     
         
     output = tnd_output;

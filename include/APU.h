@@ -41,8 +41,24 @@ struct Triangle
     uint16_t divider = 0;
     uint8_t sequence_step = 0;
     uint8_t linear_counter_divider = 0;
-    uint8_t last_output;
+    uint16_t timer = 0;
+};
 
+struct Noise
+{
+    //Envelope unit
+    bool start_flag = false;
+    uint8_t envelope_divider = 0;
+    uint8_t envelope_decay_level_counter = 0;
+    uint8_t volume = 0; //envelope
+    bool const_volume = false;
+
+    bool envelope_loop = false;
+    uint8_t noise_period = 0;
+    bool loop_noise = false;
+    uint8_t length_counter_load = 0;
+    uint16_t timer = 0;
+    uint16_t shift_register = 1;
 };
 
 class Bus;
@@ -61,7 +77,7 @@ class APU
         void tick_envelope();
         void tick_length_counter();
         void tick_frame_counter();
-        void tick_pulse_timer();
+        void tick_timers();
         void tick_sweep();
         void calculate_target_period_pulse(Pulse &pulse, int npulse);
         void tick_triangle_timer();
@@ -70,11 +86,13 @@ class APU
         std::vector<uint8_t> sequence_lookup_table;
         std::vector<uint8_t> length_counter_lookup_table;
         std::vector<uint8_t> triangle_sequence;
+        std::vector<uint16_t> ntsc_noise_period;
         
         float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;
         Pulse pulse1, pulse2;
         Triangle triangle;
+        Noise noise;
         uint8_t status_register = 0;
         bool sequence_mode = 0;
         bool inhibit_flag = 0;
