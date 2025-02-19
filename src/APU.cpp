@@ -260,7 +260,7 @@ void APU::tick_triangle_timer()
     if(triangle.divider == 0)
     {
         triangle.divider = triangle.timer;
-        if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0) && (triangle.timer >= 2) && (triangle.timer < 0x7FE))
+        if((triangle.length_counter_load > 0) && (triangle.linear_counter_divider > 0) && (triangle.timer > 2) && (triangle.timer < 0x7FE))
             triangle.sequence_step = (triangle.sequence_step + 1) & 31;
     }
     else
@@ -412,14 +412,35 @@ void APU::tick_sweep()
     }
 }
 
+double prev_output_hp_90 = 0;
+double prev_output_hp_440 = 0;
+double prev_output_lp_14000 = 0;
+
+double high_pass_filter(double input, double& prev_output, double cutoff_freq, double sample_rate = 44100.0) 
+{
+    double alpha = 1.0 / (1.0 + (2.0 * M_PI * cutoff_freq / sample_rate));
+    double output = input - prev_output + alpha * prev_output;
+    prev_output = output;
+    return output;
+}
+
+// Function to apply a first-order low-pass filter.
+double low_pass_filter(double input, double& prev_output, double cutoff_freq, double sample_rate = 44100.0) 
+{
+    double alpha = 1.0 / (1.0 + (2.0 * M_PI * cutoff_freq / sample_rate));
+    double output = alpha * input + (1.0 - alpha) * prev_output;
+    prev_output = output;
+    return output;
+}
+
 double APU::get_output()
 {
     double pulse1_output = 0;
     double pulse2_output = 0;
     double pulse_output = 0;
-    double tnd_output = 0;
-    double output = 0;
-    double triangle_sample = 0;
+    float tnd_output = 0;
+    float output = 0;
+    float triangle_sample = 0;
     double noise_sample = 0;
 
     if(pulse1.sequencer_output == 1 && pulse1.target_period <= 0x7FF && pulse1.timer >= 8 && pulse1.length_counter_load > 0 && (status_register & 0x1))
@@ -448,14 +469,21 @@ double APU::get_output()
             noise_sample = noise.volume;
         else
             noise_sample = noise.envelope_decay_level_counter;      
-    }
+    } 
 
-    tnd_output = 159.79 / ((1 / (triangle_sample / 8227) + (noise_sample / 12241)) + 100);
+    tnd_output = 159.79 / ((1.0 / (triangle_sample / 8227.0)) + 100.0);
+    if(triangle_sample == 0)
+        tnd_output = 0;
     
-        
-    output = tnd_output;
-        
-    return  output;
+    // Apply the filters:
+    double filtered_output = pulse_output + tnd_output;
+    filtered_output = high_pass_filter(filtered_output, prev_output_hp_90, 90.0);  // High-pass at 90 Hz
+    filtered_output = high_pass_filter(filtered_output, prev_output_hp_440, 440.0); // High-pass at 440 Hz
+    filtered_output = low_pass_filter(filtered_output, prev_output_lp_14000, 14000.0); // Low-pass at 14 kHz
+
+    output = filtered_output;
+
+    return output;
 }
 
 void APU::connect_bus(std::shared_ptr<Bus> bus)

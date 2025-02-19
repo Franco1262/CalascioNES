@@ -15,28 +15,62 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
-
+#include <array>
 constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
 
-std::vector<int16_t> audio_buffer;  // Buffer to hold audio samples
-
+std::vector<int16_t> audio_buffer;
 std::mutex audio_mutex;
 
-void audio_callback(void* userdata, Uint8* stream, int len) {
+void audio_callback(void* userdata, Uint8* stream, int len) 
+{
     int16_t* output = reinterpret_cast<int16_t*>(stream);
     int samples_needed = len / sizeof(int16_t);
+    std::vector<int16_t> interpolated_buffer;
+    interpolated_buffer.resize(samples_needed);
+    std::lock_guard<std::mutex> lock(audio_mutex);
+    int j = 2;
 
-    std::lock_guard<std::mutex> lock(audio_mutex);  // Lock the buffer while modifying it
+    if ((int)audio_buffer.size() < samples_needed) //if there is buffer underrun...
+    {
+        int samples_to_fill = samples_needed - audio_buffer.size();
+        if(samples_to_fill < (int)audio_buffer.size())
+        {
+            int gap = (int)audio_buffer.size() / samples_to_fill; // Avoid division by zero
 
-    for (int i = 0; i < samples_needed; ++i) {
-        if (!audio_buffer.empty()) {
-            output[i] = audio_buffer.front();
-            audio_buffer.erase(audio_buffer.begin());
-        } else {
-            output[i] = 0;
+            interpolated_buffer[0] = audio_buffer[0];
+            interpolated_buffer[samples_needed-1] = audio_buffer.back();
+
+            for(int i = 1; i < samples_needed - 1; i++)
+            {
+                if(i % gap == 0)
+                {
+                    int previous_sample = interpolated_buffer[i-1];
+                    int next_sample = audio_buffer[j];
+                    int interpolated_sample = previous_sample + ((next_sample - previous_sample) / 2);
+                    interpolated_buffer[i] = interpolated_sample;
+                }
+                else
+                {
+                    interpolated_buffer[i] = audio_buffer[j];
+                    j++;
+                }
+            }
+            // Copy to output
+            std::copy(interpolated_buffer.begin(), interpolated_buffer.end(), output);
+            audio_buffer.clear();
         }
+        else
+        {
+            std::fill(interpolated_buffer.begin(), interpolated_buffer.end(), 0);
+            std::copy(interpolated_buffer.begin(), interpolated_buffer.begin() + samples_needed, output); 
+        }
+    } 
+    else 
+    {
+        std::copy(audio_buffer.begin(), audio_buffer.begin() + samples_needed, output);
+        audio_buffer.erase(audio_buffer.begin(), audio_buffer.begin() + samples_needed);
     }
 }
 
@@ -107,6 +141,7 @@ class SDL_manager
 };
 
 
+
 class NES
 {
     public:
@@ -158,11 +193,11 @@ class NES
                 apu->tick();
                 sample += apu->get_output();
                 counter++;
-                if(counter == 41)
+                if(counter >= 41)
                 {
                     sample = sample / 41;
                     audio_buffer.push_back(sample * 32767);
-                    counter = 0;
+                    counter -= 41;
                     sample = 0;
                 }
             }      
@@ -264,7 +299,7 @@ class NES
         std::string old_game_filename;
         std::string log;
         bool zapper_connected = false;
-        double sample = 0;
+        float sample = 0.0;
         int counter = 0;
 
 };

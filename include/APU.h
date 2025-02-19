@@ -41,7 +41,6 @@ struct Triangle
     uint16_t divider = 0;
     uint8_t sequence_step = 0;
     uint8_t linear_counter_divider = 0;
-    uint16_t timer = 0;
 };
 
 struct Noise
@@ -101,6 +100,4 @@ class APU
 
         uint8_t delay_write_to_frame_counter = 0.0;
         bool reset = false;
-        bool a = false;
-
 };
