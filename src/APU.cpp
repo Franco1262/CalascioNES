@@ -72,7 +72,6 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
 
             //Restart envelope
             pulse1.envelope_decay_level_counter = 15;
-            pulse1.envelope_divider = pulse1.volume;
             //Side effects of writing to this register
             pulse1.sequence_step = 7;
             pulse1.start_flag = true;
@@ -100,7 +99,6 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             pulse2.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             //Restart envelope
             pulse2.envelope_decay_level_counter = 15;
-            pulse2.envelope_divider = pulse2.volume;
             //Side effects of writing to this register
             pulse2.sequence_step = 7;
             pulse2.start_flag = true;
@@ -129,6 +127,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x400F:
             noise.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            noise.envelope_decay_level_counter = 15;
+            noise.start_flag = true;
             break;
         //Used for enabling and disabling individual channels
         case 0x4015:
@@ -136,6 +136,7 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             if (!(value & 0x01)) pulse1.length_counter_load = 0;
             if (!(value & 0x02)) pulse2.length_counter_load = 0;
             if (!(value & 0x04)) triangle.length_counter_load = 0;
+            if (!(value & 0x8)) noise.length_counter_load = 0;
             break;
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
@@ -307,7 +308,27 @@ void APU::tick_envelope()
         pulse2.start_flag = false;
         pulse2.envelope_decay_level_counter = 15;
         pulse2.envelope_divider = pulse2.volume;
-    } 
+    }
+
+    if(!noise.start_flag)
+    {
+        if(noise.envelope_divider == 0)
+        {
+            noise.envelope_divider = noise.volume;
+            if(noise.envelope_decay_level_counter != 0)
+                noise.envelope_decay_level_counter--;
+            else if(noise.envelope_loop)
+                    noise.envelope_decay_level_counter = 15;          
+        }
+        else
+            noise.envelope_divider--;
+    }
+    else
+    {
+        noise.start_flag = false;
+        noise.envelope_decay_level_counter = 15;
+        noise.envelope_divider = noise.volume;
+    }
 }
 
 void APU::tick_length_counter()
@@ -351,6 +372,19 @@ void APU::tick_timers()
     }
     else
         pulse2.timer_divider--;
+
+    if(noise.timer_divider == 0)
+    {
+        noise.timer_divider = noise.timer;
+        noise.feedback = (noise.shift_register & 0x1) ^ ((noise.loop_noise == 0) ? 
+                                                        ((noise.shift_register & 0x2) >> 1) : //Bit 1
+                                                        ((noise.shift_register & 0x40) >> 6)); //bit 6
+
+        noise.shift_register = noise.shift_register >>  1;
+        noise.shift_register = (noise.shift_register & 0x3FFF) | (noise.feedback << 14);
+    }
+    else
+        noise.timer_divider--;
 }
 
 //the pulse number is passed as parameter because the behaviour when change amount is negated differs from one another
@@ -435,14 +469,16 @@ double low_pass_filter(double input, double& prev_output, double cutoff_freq, do
 
 double APU::get_output()
 {
-    double pulse1_output = 0;
-    double pulse2_output = 0;
-    double pulse_output = 0;
+    float pulse1_output = 0;
+    float pulse2_output = 0;
+    float pulse_output = 0;
     float tnd_output = 0;
-    float output = 0;
     float triangle_sample = 0;
-    double noise_sample = 0;
+    float noise_sample = 0;
+    float triangle_output = 0;
+    float noise_output = 0;
 
+    //Calculate pulses output
     if(pulse1.sequencer_output == 1 && pulse1.target_period <= 0x7FF && pulse1.timer >= 8 && pulse1.length_counter_load > 0 && (status_register & 0x1))
     {
         if(pulse1.const_volume)
@@ -450,6 +486,7 @@ double APU::get_output()
         else
             pulse1_output = pulse1.envelope_decay_level_counter;
     }
+
     if(pulse2.sequencer_output == 1 && pulse2.target_period <= 0x7FF && pulse2.timer >= 8 && pulse2.length_counter_load > 0 && (status_register & 0x2))
     {
         if(pulse2.const_volume)
@@ -461,8 +498,8 @@ double APU::get_output()
     if(pulse1_output != 0 || pulse2_output != 0)
         pulse_output = (95.88 / ((8128 / (pulse1_output + pulse2_output)) + 100));
 
+    //Calculate triangle and noise output
     triangle_sample = triangle_sequence[triangle.sequence_step];
-
     if(!(noise.shift_register & 0x1) && noise.length_counter_load != 0)
     {
         if(noise.const_volume)
@@ -471,19 +508,23 @@ double APU::get_output()
             noise_sample = noise.envelope_decay_level_counter;      
     } 
 
-    tnd_output = 159.79 / ((1.0 / (triangle_sample / 8227.0)) + 100.0);
-    if(triangle_sample == 0)
-        tnd_output = 0;
+    if(triangle_sample != 0)
+        triangle_output = triangle_sample / 8227;
+        
+    if(noise_sample != 0)
+        noise_output = noise_sample / 12241;
+
+    if((noise_output != 0) || (triangle_output != 0))
+        tnd_output = 159.79 / ((1.0 / (triangle_output + noise_output)) + 100.0);
+
     
     // Apply the filters:
-    double filtered_output = pulse_output + tnd_output;
+    double filtered_output = tnd_output + pulse_output;
     filtered_output = high_pass_filter(filtered_output, prev_output_hp_90, 90.0);  // High-pass at 90 Hz
     filtered_output = high_pass_filter(filtered_output, prev_output_hp_440, 440.0); // High-pass at 440 Hz
     filtered_output = low_pass_filter(filtered_output, prev_output_lp_14000, 14000.0); // Low-pass at 14 kHz
 
-    output = filtered_output;
-
-    return output;
+    return filtered_output;
 }
 
 void APU::connect_bus(std::shared_ptr<Bus> bus)

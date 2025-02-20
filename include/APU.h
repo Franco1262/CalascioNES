@@ -57,7 +57,9 @@ struct Noise
     bool loop_noise = false;
     uint8_t length_counter_load = 0;
     uint16_t timer = 0;
+    uint16_t timer_divider = 0;
     uint16_t shift_register = 1;
+    uint16_t feedback = 0;
 };
 
 class Bus;
