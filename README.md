@@ -14,11 +14,14 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 - [x] PAL support
 
 ### APU
-- [ ] Not implemented yet (coming soon)
+- [x] Pulse channel
+- [x] Triangle channel
+- [ ] Noise channel
+- [ ] DMC channel    
 
 ### Controllers
 - [x] Keyboard input
-- [x] Zapper support
+- [ ] Zapper support
 
 ### iNES Format Support
 
