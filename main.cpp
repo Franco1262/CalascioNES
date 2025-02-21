@@ -19,58 +19,42 @@
 constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
+const double APU_CLOCK = 1789733.0;
+const double SAMPLE_RATE = 44100.0;
+const double ratio = APU_CLOCK / SAMPLE_RATE;
 
-std::vector<int16_t> audio_buffer;
-std::mutex audio_mutex;
+const int BUFFER_SIZE = 8192;
+int16_t audio_buffer[BUFFER_SIZE];
+uint16_t read_pos = 0;
+uint16_t write_pos = 0;
+bool game_not_initialized = true;
+
 
 void audio_callback(void* userdata, Uint8* stream, int len) 
 {
     int16_t* output = reinterpret_cast<int16_t*>(stream);
     int samples_needed = len / sizeof(int16_t);
-    std::vector<int16_t> interpolated_buffer;
-    interpolated_buffer.resize(samples_needed);
-    std::lock_guard<std::mutex> lock(audio_mutex);
-    int j = 2;
+    int available_data = 0;
 
-    if ((int)audio_buffer.size() < samples_needed) //if there is buffer underrun...
+    available_data = (write_pos >= read_pos) ? (write_pos - read_pos) : ((BUFFER_SIZE - read_pos) + write_pos);
+
+    if (available_data >= samples_needed) 
     {
-        int samples_to_fill = samples_needed - audio_buffer.size();
-        if(samples_to_fill < (int)audio_buffer.size())
+        if (read_pos + samples_needed > BUFFER_SIZE) 
         {
-            int gap = (int)audio_buffer.size() / samples_to_fill; // Avoid division by zero
-
-            interpolated_buffer[0] = audio_buffer[0];
-            interpolated_buffer[samples_needed-1] = audio_buffer.back();
-
-            for(int i = 1; i < samples_needed - 1; i++)
-            {
-                if(i % gap == 0)
-                {
-                    int previous_sample = interpolated_buffer[i-1];
-                    int next_sample = audio_buffer[j];
-                    int interpolated_sample = previous_sample + ((next_sample - previous_sample) / 2);
-                    interpolated_buffer[i] = interpolated_sample;
-                }
-                else
-                {
-                    interpolated_buffer[i] = audio_buffer[j];
-                    j++;
-                }
-            }
-            // Copy to output
-            std::copy(interpolated_buffer.begin(), interpolated_buffer.end(), output);
-            audio_buffer.clear();
-        }
-        else
-        {
-            std::fill(interpolated_buffer.begin(), interpolated_buffer.end(), 0);
-            std::copy(interpolated_buffer.begin(), interpolated_buffer.begin() + samples_needed, output); 
-        }
-    } 
-    else 
+            int first_chunk_size = BUFFER_SIZE - read_pos;
+            std::copy(audio_buffer + read_pos, audio_buffer + BUFFER_SIZE, output);
+            std::copy(audio_buffer, audio_buffer + (samples_needed - first_chunk_size), output + first_chunk_size);
+        } 
+        else 
+            std::copy(audio_buffer + read_pos, audio_buffer + read_pos + samples_needed, output);
+    
+        read_pos = (read_pos + samples_needed) & (BUFFER_SIZE-1);
+    }
+    
+    else if(game_not_initialized)
     {
-        std::copy(audio_buffer.begin(), audio_buffer.begin() + samples_needed, output);
-        audio_buffer.erase(audio_buffer.begin(), audio_buffer.begin() + samples_needed);
+        std::fill(output, output + samples_needed, 0);
     }
 }
 
@@ -107,9 +91,9 @@ class SDL_manager
             desired_spec.freq = 44100;         // 44.1 kHz sample rate
             desired_spec.format = AUDIO_S16SYS; // 16-bit signed samples
             desired_spec.channels = 1;         // Mono audio
-            desired_spec.samples = 8192;        // Buffer size (lower = less latency)
+            desired_spec.samples = 1024;        // Buffer size (lower = less latency)
             desired_spec.callback = audio_callback;
-        
+            
             auto audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);
             if (audio_device == 0) {
                 std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
@@ -174,6 +158,7 @@ class NES
 
             else
                 log = std::string("File does not have .nes extension");
+            game_not_initialized = false;
 
             return game_loaded;
         }
@@ -181,27 +166,42 @@ class NES
         void run_frame()
         {
             current_frame = ppu->get_frame();
+        
             while (current_frame == ppu->get_frame() && !pause) 
             {   
+                // PPU timing
                 ppu_accumulator += PPU_TIMING;
                 while (ppu_accumulator >= 1.0)
                 { 
                     ppu->tick();
                     ppu_accumulator -= 1.0;
                 }
+        
+                // CPU and APU tick
                 cpu->tick();
                 apu->tick();
-                sample += apu->get_output();
-                counter++;
-                if(counter >= 41)
+                
+                apu_cycle_accumulator += 1;
+        
+                if (apu_cycle_accumulator >= ratio) // 1 audio sample every 40.584 APU cycles
                 {
-                    sample = sample / 41;
-                    audio_buffer.push_back(sample * 32767);
-                    counter -= 41;
-                    sample = 0;
+                    double alpha = apu_cycle_accumulator - ratio;
+                    double previous_sample = last_sample;
+                    double current_sample = apu->get_output();
+                    
+                    // Linear interpolation
+                    double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
+                    {
+                        audio_buffer[write_pos] = interpolated_sample * 32767;
+                        write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
+                    }
+        
+                    last_sample = current_sample;
+                    apu_cycle_accumulator -= ratio;
                 }
-            }      
+            }
         }
+        
 
         inline void change_pause()
         {
@@ -299,8 +299,8 @@ class NES
         std::string old_game_filename;
         std::string log;
         bool zapper_connected = false;
-        float sample = 0.0;
-        int counter = 0;
+        double apu_cycle_accumulator = 0;
+        double last_sample = 0;
 
 };
 
