@@ -16,7 +16,7 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 ### APU
 - [x] Pulse channel
 - [x] Triangle channel
-- [ ] Noise channel
+- [x] Noise channel
 - [ ] DMC channel    
 
 ### Controllers
