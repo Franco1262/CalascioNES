@@ -55,9 +55,7 @@ void audio_callback(void* userdata, Uint8* stream, int len)
     }
     
     else if(game_not_initialized)
-    {
         std::fill(output, output + samples_needed, 0);
-    }
 }
 
 class SDL_manager
@@ -95,13 +93,12 @@ class SDL_manager
             desired_spec.channels = 1;         // Mono audio
             desired_spec.samples = 1024;        // Buffer size (lower = less latency)
             desired_spec.callback = audio_callback;
-            
             auto audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);
             if (audio_device == 0) {
                 std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
                 exit(1);
             }
-            
+
             SDL_PauseAudioDevice(audio_device, 0);
             
         }
@@ -216,7 +213,7 @@ class NES
     
                         apu_cycle_accumulator += 1;
             
-                        if (apu_cycle_accumulator >= apu_ratio_PAL)
+                        if (apu_cycle_accumulator >= apu_ratio_PAL) // 1 audio sample every 40.584 APU cycles
                         {
                             double alpha = apu_cycle_accumulator - apu_ratio_PAL;
                             double previous_sample = last_sample;
@@ -353,10 +350,10 @@ class NES
 
 //SDL2
 void destroy_textures();
-void handle_events(NES* nes, bool& running, SDL_manager* manager);
+void handle_events(NES* nes, SDL_manager* manager);
 //ImGUI
 void initImGui(SDL_Window* window, SDL_Renderer* renderer);
-void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer);
+void handle_imGui(NES* nes, SDL_Renderer* renderer);
 void cleanupImGui();
 //Functions to draw
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
@@ -392,60 +389,32 @@ std::chrono::time_point<std::chrono::steady_clock> windowStartTime;
 
 using namespace std::chrono;
 
-int main(int argc, char *argv[])
+
+#include <atomic>
+#include <thread>
+#include <mutex>
+
+std::atomic<bool> running(true);
+std::mutex framebuffer_mutex;
+std::vector<uint32_t> screen(256 * 240, 0);
+
+void emulate_nes(NES * nes)
 {
-    NES nes;
-    SDL_manager manager;
-    bool running = true;
-
-    if(argc > 1)
-    {
-        std::string filename(argv[1]);
-        nes.load_game(filename);
-        showWindow = true;
-        windowStartTime =  std::chrono::steady_clock::now();
-    }
-
-    initImGui(manager.get_window(), manager.get_renderer());
-    screenBuffer = SDL_CreateTexture(manager.get_renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
-
-    ImGui_ImplSDLRenderer2_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
-    ImGui::BeginMainMenuBar();
-    padding = ImGui::GetFrameHeight();
-    ImGui::EndMainMenuBar();
-    ImGui::Render();
-
-    SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
-
     auto last_time = std::chrono::high_resolution_clock::now();
     int frame_count = 0;
-
-    while (running) 
+    while (running)
     {
-        handle_events(&nes, running, &manager);
-
-        // Start ImGui frame
-        ImGui_ImplSDLRenderer2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
-
-        // Clear screen to black
-        SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255);
-        SDL_RenderClear(manager.get_renderer());
-
         // Frame timing start
         auto frame_start = high_resolution_clock::now();
 
-        if (nes.is_game_loaded())
-        {
-            nes.run_frame(); // Emulate a frame
-            draw_frame(nes.get_ppu(), manager.get_renderer()); // Render frame
-        }
+        
+        if (nes->is_game_loaded())
+            nes->run_frame();
 
-        handle_imGui(&nes, running, manager.get_renderer()); // Render ImGui UI
-        SDL_RenderPresent(manager.get_renderer()); // Display rendered frame
+        {
+            std::lock_guard<std::mutex> lock(framebuffer_mutex);
+            screen = nes->get_ppu()->get_screen();
+        }
 
         auto frame_end = high_resolution_clock::now();
         duration<double, std::milli> frame_duration = frame_end - frame_start;
@@ -468,7 +437,57 @@ int main(int argc, char *argv[])
             last_time = current_time;
         }
     }
+}
 
+int main(int argc, char *argv[])
+{
+    NES nes;
+    SDL_manager manager;
+
+    if(argc > 1)
+    {
+        std::string filename(argv[1]);
+        nes.load_game(filename);
+        showWindow = true;
+        windowStartTime =  std::chrono::steady_clock::now();
+    }
+
+    initImGui(manager.get_window(), manager.get_renderer());
+    screenBuffer = SDL_CreateTexture(manager.get_renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+
+    std::thread emulation_thread(emulate_nes, &nes);
+
+    ImGui_ImplSDLRenderer2_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+    ImGui::BeginMainMenuBar();
+    padding = ImGui::GetFrameHeight();
+    ImGui::EndMainMenuBar();
+    ImGui::Render();
+
+    SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
+
+    while (running) 
+    {
+        
+        handle_events(&nes, &manager);
+        
+        // Start ImGui frame
+        ImGui_ImplSDLRenderer2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        // Clear screen to black
+        SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255);
+        SDL_RenderClear(manager.get_renderer());
+
+        draw_frame(nes.get_ppu(), manager.get_renderer()); // Render frame
+
+        handle_imGui(&nes, manager.get_renderer()); // Render ImGui UI
+        SDL_RenderPresent(manager.get_renderer()); // Display rendered frame
+    }
+
+    emulation_thread.join();
     SDL_DestroyRenderer(nametable_renderer);
     SDL_DestroyRenderer(pattern_renderer);
     SDL_DestroyRenderer(sprite_renderer);
@@ -486,11 +505,12 @@ int main(int argc, char *argv[])
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
 {
      
-    //Screen
-    std::vector<uint32_t> screen = ppu->get_screen();
     SDL_Rect screen_rect = {0, padding , SCREEN_WIDTH, SCREEN_HEIGHT};
-    SDL_UpdateTexture(screenBuffer, NULL, screen.data(), 256 * 4);
-    SDL_RenderCopy(renderer, screenBuffer, NULL, &screen_rect);
+    {
+        std::lock_guard<std::mutex> lock(framebuffer_mutex);
+        SDL_UpdateTexture(screenBuffer, NULL, screen.data(), 256 * 4);
+        SDL_RenderCopy(renderer, screenBuffer, NULL, &screen_rect);
+    }
 
     //Nametable Viewer
     if(nametable_window != nullptr)
@@ -546,7 +566,7 @@ void destroy_textures()
     SDL_DestroyTexture(patternBuffer1);  
 }
 
-void handle_events(NES* nes, bool& running, SDL_manager* manager)
+void handle_events(NES* nes, SDL_manager* manager)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event)) 
@@ -658,7 +678,7 @@ void cleanupImGui()
     ImGui::DestroyContext();
 }
 
-void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
+void handle_imGui(NES* nes, SDL_Renderer* renderer)
 {
 
     if (ImGui::BeginMainMenuBar()) {
