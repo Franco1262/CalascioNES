@@ -27,6 +27,13 @@ APU::APU()
         4, 8, 16, 32, 64, 96, 128, 160, 
         202, 254, 380, 508, 762, 1016, 2034, 4068
     };
+
+    pal_noise_period = 
+    {
+        4, 8, 14, 30, 60, 88, 118, 148, 
+        188, 236, 354, 472, 708, 944, 1890, 3778
+    };
+    
     
 }
 APU::~APU()
@@ -122,7 +129,10 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x400E:
             noise.noise_period = value & 0xF;
-            noise.timer = ntsc_noise_period[noise.noise_period];
+            if(!region)
+                noise.timer = ntsc_noise_period[noise.noise_period];
+            else
+                noise.timer = pal_noise_period[noise.noise_period];
             noise.loop_noise = value & 0x80;
             break;
         case 0x400F:
@@ -152,6 +162,22 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
     }
 }
 
+uint8_t APU::cpu_reads(uint16_t address)
+{
+    uint8_t value = 0;
+    switch(address)
+    {
+        case 0x4015:
+            value = pulse1.length_counter_load > 0;
+            value |= (pulse2.length_counter_load > 0) << 1;
+            value |= (triangle.length_counter_load > 0) << 2;
+            value |= (noise.length_counter_load > 0) << 3;
+            return value;
+        default:
+            return 0;
+    }
+}
+
 
 /*
 mode 0:    mode 1:       function
@@ -166,21 +192,33 @@ either 4 or 5 steps depending on bit 6 of frame counter ($4017)
 void APU::tick()
 {
     apu_cycles_counter += 0.5;
+
+
     if(!region) // NTSC mode
-    {
-        //Every apu cycle...
-        if(ceil(apu_cycles_counter) == apu_cycles_counter)
-            tick_timers();
-            
+    {          
         if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
             apu_cycles_counter == 14914.5 || apu_cycles_counter == 18640.5)
         {
             tick_frame_counter();  
         }
-
-        //On every cpu cycle clock triangle's timer
-        tick_triangle_timer();
     }
+    else
+    {
+        if(apu_cycles_counter == 4156.5 || apu_cycles_counter == 8313.5 || apu_cycles_counter == 12469.5 ||
+            apu_cycles_counter == 16626.5 || apu_cycles_counter == 20782.5)
+        {
+            tick_frame_counter();  
+        }
+    }
+
+    //Every apu cycle...
+    if(ceil(apu_cycles_counter) == apu_cycles_counter)
+        tick_timers();
+
+    //On every cpu cycle clock triangle's timer
+    tick_triangle_timer();
+
+
     delay_write_to_frame_counter--;
     if(delay_write_to_frame_counter == 0 && reset)
     {
@@ -249,6 +287,7 @@ void APU::tick_linear_counter()
 
     if(triangle.linear_counter_reload)
         triangle.linear_counter_divider = triangle.linear_counter_load;
+        
     else if(triangle.linear_counter_divider != 0)
         triangle.linear_counter_divider--;
     

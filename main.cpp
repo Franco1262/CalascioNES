@@ -1,6 +1,3 @@
-#include <iostream>
-#include <vector>
-#include <cstdint>
 #include "CPU.h"
 #include "PPU.h"
 #include "APU.h"
@@ -8,20 +5,25 @@
 #include "Bus.h"
 #include "nfd.h"
 #include <filesystem>
-#include <chrono>
-#include <thread>
 #include <cmath>
-#include <mutex>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
-#include <array>
+
 constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
-const double APU_CLOCK = 1789733.0;
+
+const double MASTER_CLOCK_NTSC = 236250000.0 / 11.0;
+const double MASTER_CLOCK_PAL =  26601712.5;
+const double CPU_CLOCK_NTSC = MASTER_CLOCK_NTSC / 12.0;
+const double CPU_CLOCK_PAL =  MASTER_CLOCK_PAL / 16;
 const double SAMPLE_RATE = 44100.0;
-const double ratio = APU_CLOCK / SAMPLE_RATE;
+const double apu_ratio_NTSC = CPU_CLOCK_NTSC / SAMPLE_RATE;
+const double apu_ratio_PAL = CPU_CLOCK_PAL / SAMPLE_RATE;
+
+const double cpu_tick_ratio_ntsc = MASTER_CLOCK_NTSC / CPU_CLOCK_NTSC;
+const double cpu_tick_ratio_pal = MASTER_CLOCK_PAL / CPU_CLOCK_PAL;
 
 const int BUFFER_SIZE = 8192;
 int16_t audio_buffer[BUFFER_SIZE];
@@ -153,12 +155,12 @@ class NES
                 if(std::filesystem::is_regular_file(log))
                 {
                     log = std::filesystem::path(log).stem().string();
+                    game_not_initialized = false;
                 }
             }
 
             else
                 log = std::string("File does not have .nes extension");
-            game_not_initialized = false;
 
             return game_loaded;
         }
@@ -168,37 +170,79 @@ class NES
             current_frame = ppu->get_frame();
         
             while (current_frame == ppu->get_frame() && !pause) 
-            {   
-                // PPU timing
-                ppu_accumulator += PPU_TIMING;
-                while (ppu_accumulator >= 1.0)
-                { 
-                    ppu->tick();
-                    ppu_accumulator -= 1.0;
-                }
-        
-                // CPU and APU tick
-                cpu->tick();
-                apu->tick();
-                
-                apu_cycle_accumulator += 1;
-        
-                if (apu_cycle_accumulator >= ratio) // 1 audio sample every 40.584 APU cycles
+            {          
+                cpu_cycle_accumulator+= 1.0;
+
+                //NTSC NES
+                if(PPU_TIMING == 3.0)
                 {
-                    double alpha = apu_cycle_accumulator - ratio;
-                    double previous_sample = last_sample;
-                    double current_sample = apu->get_output();
-                    
-                    // Linear interpolation
-                    double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
+                    if(cpu_cycle_accumulator >= cpu_tick_ratio_ntsc)
                     {
-                        audio_buffer[write_pos] = interpolated_sample * 32767;
-                        write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
+                        cpu->tick();
+                        apu->tick();
+    
+                        apu_cycle_accumulator += 1;
+            
+                        if (apu_cycle_accumulator >= apu_ratio_NTSC) // 1 audio sample every 40.584 APU cycles
+                        {
+                            double alpha = apu_cycle_accumulator - apu_ratio_NTSC;
+                            double previous_sample = last_sample;
+                            double current_sample = apu->get_output();
+                            
+                            // Linear interpolation
+                            double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
+                            {
+                                audio_buffer[write_pos] = interpolated_sample * 32767;
+                                write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
+                            }
+                
+                            last_sample = current_sample;
+                            apu_cycle_accumulator -= apu_ratio_NTSC;
+                        }
+    
+                        ppu->tick();
+                        ppu->tick();
+                        ppu->tick();
+    
+                        cpu_cycle_accumulator -= cpu_tick_ratio_ntsc;
                     }
-        
-                    last_sample = current_sample;
-                    apu_cycle_accumulator -= ratio;
                 }
+                else //PAL NES
+                {
+                    if(cpu_cycle_accumulator >= cpu_tick_ratio_pal)
+                    {
+                        cpu->tick();
+                        apu->tick();
+    
+                        apu_cycle_accumulator += 1;
+            
+                        if (apu_cycle_accumulator >= apu_ratio_PAL)
+                        {
+                            double alpha = apu_cycle_accumulator - apu_ratio_PAL;
+                            double previous_sample = last_sample;
+                            double current_sample = apu->get_output();
+                            
+                            // Linear interpolation
+                            double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
+                            {
+                                audio_buffer[write_pos] = interpolated_sample * 32767;
+                                write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
+                            }
+                
+                            last_sample = current_sample;
+                            apu_cycle_accumulator -= apu_ratio_PAL;
+                        }
+    
+                        ppu_accumulator += PPU_TIMING;
+                        while (ppu_accumulator >= 1.0)
+                        { 
+                            ppu->tick();
+                            ppu_accumulator -= 1.0;
+                        }
+    
+                        cpu_cycle_accumulator -= cpu_tick_ratio_pal;
+                    }                  
+                }        
             }
         }
         
@@ -245,6 +289,7 @@ class NES
             ppu->soft_reset();
             cart->soft_reset();
             bus->soft_reset();
+            PPU_TIMING = 3;
             game_loaded = false;
             ppu_accumulator = 0;
             pause = false;
@@ -301,6 +346,7 @@ class NES
         bool zapper_connected = false;
         double apu_cycle_accumulator = 0;
         double last_sample = 0;
+        double cpu_cycle_accumulator = 0;
 
 };
 
@@ -333,7 +379,7 @@ SDL_Renderer* pattern_renderer;
 SDL_Window* sprite_window;
 SDL_Renderer* sprite_renderer;
 
-int desired_fps = 60;
+double desired_fps = 60.0;
 double frame_time = (1000.0 / desired_fps);
 bool show_fps = false;
 int FPS;
@@ -403,6 +449,7 @@ int main(int argc, char *argv[])
 
         auto frame_end = high_resolution_clock::now();
         duration<double, std::milli> frame_duration = frame_end - frame_start;
+
         while (frame_duration.count() < frame_time)
         {
             frame_end = high_resolution_clock::now();
@@ -558,6 +605,9 @@ void handle_events(NES* nes, bool& running, SDL_manager* manager)
                 case SDL_SCANCODE_O:
                     if (nes->is_game_loaded())
                         nes->change_timing();
+                    desired_fps = (desired_fps == 50) ? 60 : 50;
+                    frame_time = 1000 / desired_fps;
+
                     break;
                     
                 default: break;
@@ -659,6 +709,8 @@ void handle_imGui(NES* nes, bool& running, SDL_Renderer* renderer)
             {
                 if(nes->is_game_loaded())
                     nes->change_timing();
+                desired_fps = (desired_fps == 50) ? 60 : 50;
+                frame_time = 1000 / desired_fps;
             }
 
             if(ImGui::BeginMenu("Speed"))

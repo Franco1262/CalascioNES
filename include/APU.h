@@ -69,6 +69,7 @@ class APU
         APU();
         ~APU();
         void cpu_writes(uint16_t address, uint8_t value);
+        uint8_t cpu_reads(uint16_t address);
         void connect_bus(std::shared_ptr<Bus> bus);
         void tick();
         void set_timing(bool value);
@@ -88,7 +89,8 @@ class APU
         std::vector<uint8_t> length_counter_lookup_table;
         std::vector<uint8_t> triangle_sequence;
         std::vector<uint16_t> ntsc_noise_period;
-        
+        std::vector<uint16_t> pal_noise_period;
+
         float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;
         Pulse pulse1, pulse2;

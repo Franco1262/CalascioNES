@@ -60,6 +60,10 @@ uint8_t Bus::cpu_reads(uint16_t address)
             
             data |= 0x40;
         }
+
+        else
+            data = apu->cpu_reads(address);
+        
     }
     
     else if (address >= 0x4020 && address <= 0xFFFF)
