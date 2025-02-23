@@ -73,6 +73,7 @@ class APU
         void connect_bus(std::shared_ptr<Bus> bus);
         void tick();
         void set_timing(bool value);
+        void soft_reset();
         double get_output();
 
     private:

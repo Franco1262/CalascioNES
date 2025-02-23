@@ -152,6 +152,7 @@ class NES
                 if(std::filesystem::is_regular_file(log))
                 {
                     log = std::filesystem::path(log).stem().string();
+                    game_title = log;
                     game_not_initialized = false;
                 }
             }
@@ -171,7 +172,7 @@ class NES
                 cpu_cycle_accumulator+= 1.0;
 
                 //NTSC NES
-                if(PPU_TIMING == 3.0)
+                if(!region)
                 {
                     if(cpu_cycle_accumulator >= cpu_tick_ratio_ntsc)
                     {
@@ -230,7 +231,7 @@ class NES
                             apu_cycle_accumulator -= apu_ratio_PAL;
                         }
     
-                        ppu_accumulator += PPU_TIMING;
+                        ppu_accumulator += 3.2;
                         while (ppu_accumulator >= 1.0)
                         { 
                             ppu->tick();
@@ -251,18 +252,10 @@ class NES
 
         inline void change_timing()
         {
-            if(PPU_TIMING == 3)
-            {
-                PPU_TIMING = 3.2;
-                ppu->set_ppu_timing(1);
-                apu->set_timing(1);
-            }
-            else
-            {
-                PPU_TIMING = 3;
-                ppu->set_ppu_timing(0);
-                apu->set_timing(0);                       
-            }
+            region = !region;
+            region_info = (region) ? "PAL" : "NTSC";
+            ppu->set_ppu_timing(region);
+            apu->set_timing(region);                       
         }
 
         inline bool is_game_loaded()
@@ -286,7 +279,7 @@ class NES
             ppu->soft_reset();
             cart->soft_reset();
             bus->soft_reset();
-            PPU_TIMING = 3;
+            apu->soft_reset();
             game_loaded = false;
             ppu_accumulator = 0;
             pause = false;
@@ -324,6 +317,17 @@ class NES
         {
             return log;
         }
+        
+        bool get_region()
+        {
+            return region;
+        }
+
+        std::string get_info()
+        {
+            std::string info = " | Game: " + game_title + " | Active region: " + region_info;
+            return info;
+        }
 
 
 
@@ -335,7 +339,7 @@ class NES
         std::shared_ptr<Bus> bus;
         bool current_frame;
         float ppu_accumulator = 0.0;
-        float PPU_TIMING = 3;
+        bool region = 0; // 0: NTSC, 1: PAL
         bool pause = false;
         bool game_loaded = false;
         std::string old_game_filename;
@@ -345,6 +349,9 @@ class NES
         double last_sample = 0;
         double cpu_cycle_accumulator = 0;
 
+        std::string game_title = "";
+        std::string region_info = "NTSC";
+
 };
 
 
@@ -353,7 +360,7 @@ void destroy_textures();
 void handle_events(NES* nes, SDL_manager* manager);
 //ImGUI
 void initImGui(SDL_Window* window, SDL_Renderer* renderer);
-void handle_imGui(NES* nes, SDL_Renderer* renderer);
+void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager);
 void cleanupImGui();
 //Functions to draw
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
@@ -450,6 +457,7 @@ int main(int argc, char *argv[])
         nes.load_game(filename);
         showWindow = true;
         windowStartTime =  std::chrono::steady_clock::now();
+        SDL_SetWindowTitle(manager.get_window(), ("CalascioNES" + nes.get_info()).c_str());
     }
 
     initImGui(manager.get_window(), manager.get_renderer());
@@ -483,7 +491,7 @@ int main(int argc, char *argv[])
 
         draw_frame(nes.get_ppu(), manager.get_renderer()); // Render frame
 
-        handle_imGui(&nes, manager.get_renderer()); // Render ImGui UI
+        handle_imGui(&nes, manager.get_renderer(), &manager); // Render ImGui UI
         SDL_RenderPresent(manager.get_renderer()); // Display rendered frame
     }
 
@@ -625,9 +633,10 @@ void handle_events(NES* nes, SDL_manager* manager)
                 case SDL_SCANCODE_O:
                     if (nes->is_game_loaded())
                         nes->change_timing();
-                    desired_fps = (desired_fps == 50) ? 60 : 50;
-                    frame_time = 1000 / desired_fps;
 
+                    desired_fps = (nes->get_region() > 0) ? 50 : 60;
+                    frame_time = (1000.0 / desired_fps);
+                    SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info()).c_str());
                     break;
                     
                 default: break;
@@ -636,13 +645,14 @@ void handle_events(NES* nes, SDL_manager* manager)
 
         else if(event.type == SDL_DROPFILE)
         {
-            desired_fps = 60;
-            frame_time = (1000.0 / desired_fps);
             std::string filename(event.drop.file);
             nes->load_game(filename);
+            desired_fps = (nes->get_region() > 0) ? 50 : 60;
+            frame_time = (1000.0 / desired_fps);
             showWindow = true;
             windowStartTime =  std::chrono::steady_clock::now();
             SDL_free(event.drop.file);
+            SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info()).c_str());
         }
 
         else if ((event.type == SDL_MOUSEBUTTONUP) && nes->get_zapper()) 
@@ -678,7 +688,7 @@ void cleanupImGui()
     ImGui::DestroyContext();
 }
 
-void handle_imGui(NES* nes, SDL_Renderer* renderer)
+void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager)
 {
 
     if (ImGui::BeginMainMenuBar()) {
@@ -690,13 +700,14 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer)
                     
                 if ( result == NFD_OKAY ) 
                 {
-                    desired_fps = 60;
-                    frame_time = (1000.0 / desired_fps);
                     nes->load_game(outPath);
                     showWindow = true;
                     windowStartTime =  std::chrono::steady_clock::now();
                     free(outPath);
-                }     
+                }
+                desired_fps = (nes->get_region() > 0) ? 50 : 60;
+                frame_time = (1000.0 / desired_fps);
+                SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info()).c_str());
             }
             if (ImGui::MenuItem("Exit", "Esc")) 
             {
@@ -715,7 +726,7 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer)
 
             if(ImGui::MenuItem("Reset"))
             {
-                desired_fps = 60;
+                desired_fps = (nes->get_region() > 0) ? 50 : 60;
                 frame_time = (1000.0 / desired_fps);
                 if(nes->is_game_loaded())
                     nes->reload_game();
@@ -729,15 +740,16 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer)
             {
                 if(nes->is_game_loaded())
                     nes->change_timing();
-                desired_fps = (desired_fps == 50) ? 60 : 50;
-                frame_time = 1000 / desired_fps;
+                desired_fps = (nes->get_region() > 0) ? 50 : 60;
+                frame_time = (1000.0 / desired_fps);
+                SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info()).c_str());
             }
 
             if(ImGui::BeginMenu("Speed"))
             {
                 if(ImGui::MenuItem("Normal"))
                 {
-                    desired_fps = 60;
+                    desired_fps = (nes->get_region() > 0) ? 50 : 60;
                     frame_time = (1000.0 / desired_fps);
                 }
 
@@ -776,13 +788,13 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer)
 
                 if(ImGui::MenuItem("Double speed"))
                 {
-                    desired_fps = 120;
+                    desired_fps = ((nes->get_region() > 0) ? 50 : 60) * 2;
                     frame_time = (1000.0 / desired_fps);
                 }  
 
                 if(ImGui::MenuItem("Half speed"))
                 {
-                    desired_fps = 30;
+                    desired_fps = ((nes->get_region() > 0) ? 50 : 60) / 2;
                     frame_time = (1000.0 / desired_fps);
                 }               
 
@@ -844,14 +856,8 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer)
     }
 
     if(show_fps)
-    {
-        ImGui::SetNextWindowPos(ImVec2(SCREEN_WIDTH - 80, ImGui::GetFrameHeight())); // Set position to top-left corner
-        ImGui::Begin("Label Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f)); // White color
-        ImGui::Text(("FPS: " + std::to_string(FPS)).c_str());
-        ImGui::PopStyleColor(); // Restore the previous text color
-        ImGui::End();
-    }
+        SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info() + " | FPS: " + std::to_string(FPS)).c_str());
+    
 
     if(showWindow)
     {

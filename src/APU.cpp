@@ -575,3 +575,91 @@ void APU::set_timing(bool value)
 {
     region = value;
 }
+
+void APU::soft_reset()
+{
+    // Reset Pulse 1 state
+    pulse1.start_flag = false;
+    pulse1.envelope_divider = 0;
+    pulse1.envelope_decay_level_counter = 0;
+    pulse1.volume = 0;
+    pulse1.sweep_divider_counter = 0;
+    pulse1.reload_flag = false;
+    pulse1.negate = 0;
+    pulse1.shift = 0;
+    pulse1.sweep_unit_enabled = false;
+    pulse1.period = 0;
+    pulse1.target_period = 0;
+    pulse1.duty = 0;
+    pulse1.envelope_loop = false;
+    pulse1.const_volume = false;
+    pulse1.length_counter_load = 0;
+    pulse1.timer_divider = 0;
+    pulse1.timer = 0;
+    pulse1.sequence_step = 7;
+    pulse1.sequencer_output = 0;
+
+    // Reset Pulse 2 state (similar to Pulse 1)
+    pulse2.start_flag = false;
+    pulse2.envelope_divider = 0;
+    pulse2.envelope_decay_level_counter = 0;
+    pulse2.volume = 0;
+    pulse2.sweep_divider_counter = 0;
+    pulse2.reload_flag = false;
+    pulse2.negate = 0;
+    pulse2.shift = 0;
+    pulse2.sweep_unit_enabled = false;
+    pulse2.period = 0;
+    pulse2.target_period = 0;
+    pulse2.duty = 0;
+    pulse2.envelope_loop = false;
+    pulse2.const_volume = false;
+    pulse2.length_counter_load = 0;
+    pulse2.timer_divider = 0;
+    pulse2.timer = 0;
+    pulse2.sequence_step = 7;
+    pulse2.sequencer_output = 0;
+
+    // Reset Triangle state
+    triangle.linear_counter_load = 0;
+    triangle.length_counter_halt = false;
+    triangle.length_counter_load = 0;
+    triangle.linear_counter_reload = false;
+    triangle.timer = 0;
+    triangle.divider = 0;
+    triangle.sequence_step = 0;
+    triangle.linear_counter_divider = 0;
+
+    // Reset Noise state
+    noise.start_flag = false;
+    noise.envelope_divider = 0;
+    noise.envelope_decay_level_counter = 0;
+    noise.volume = 0;
+    noise.const_volume = false;
+    noise.envelope_loop = false;
+    noise.noise_period = 0;
+    noise.loop_noise = false;
+    noise.length_counter_load = 0;
+    noise.timer = 0;
+    noise.timer_divider = 0;
+    noise.shift_register = 1;
+    noise.feedback = 0;
+
+    // Reset APU control state
+    status_register = 0;
+    sequence_mode = false;
+    inhibit_flag = false;
+    sequence_step = 0;
+    delay_write_to_frame_counter = 0;
+    reset = false;
+
+    // Reset APU cycle counter
+    apu_cycles_counter = 0.0;
+
+    // Reset all lookup tables and sequences
+    sequence_lookup_table.clear();
+    length_counter_lookup_table.clear();
+    triangle_sequence.clear();
+    ntsc_noise_period.clear();
+    pal_noise_period.clear();
+}

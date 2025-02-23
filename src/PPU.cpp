@@ -986,8 +986,6 @@ void PPU::soft_reset()
     address = 0;
     pre_render_scanline = 261;
 
-    // Reset timing and open bus states
-    ppu_timing = false;
     open_bus = 0;
     supress = false;
 }
