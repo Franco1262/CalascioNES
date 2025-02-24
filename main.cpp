@@ -1,62 +1,90 @@
+// Standard Library Headers
+#include <atomic>
+#include <cmath>
+#include <filesystem>
+#include <mutex>
+#include <thread>
+#include <vector>
+#include <chrono>
+
+// NES Emulator Components
 #include "CPU.h"
 #include "PPU.h"
 #include "APU.h"
 #include "Cartridge.h"
 #include "Bus.h"
+
+// UI and Rendering
 #include "nfd.h"
-#include <filesystem>
-#include <cmath>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 
+// Constants
 constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
 
+// Clock Rates
 const double MASTER_CLOCK_NTSC = 236250000.0 / 11.0;
-const double MASTER_CLOCK_PAL =  26601712.5;
+const double MASTER_CLOCK_PAL = 26601712.5;
 const double CPU_CLOCK_NTSC = MASTER_CLOCK_NTSC / 12.0;
-const double CPU_CLOCK_PAL =  MASTER_CLOCK_PAL / 16;
+const double CPU_CLOCK_PAL = MASTER_CLOCK_PAL / 16.0;
 const double SAMPLE_RATE = 44100.0;
+
+// APU Ratios
 const double apu_ratio_NTSC = CPU_CLOCK_NTSC / SAMPLE_RATE;
 const double apu_ratio_PAL = CPU_CLOCK_PAL / SAMPLE_RATE;
 
+// CPU Tick Ratios
 const double cpu_tick_ratio_ntsc = MASTER_CLOCK_NTSC / CPU_CLOCK_NTSC;
 const double cpu_tick_ratio_pal = MASTER_CLOCK_PAL / CPU_CLOCK_PAL;
 
-const int BUFFER_SIZE = 8192;
+// Audio Buffer
+constexpr int BUFFER_SIZE = 8192;
 int16_t audio_buffer[BUFFER_SIZE];
 uint16_t read_pos = 0;
 uint16_t write_pos = 0;
+
+// Emulator State
 bool game_not_initialized = true;
+std::atomic<bool> running(true);
+std::mutex framebuffer_mutex;
+std::vector<uint32_t> screen(256 * 240, 0);
 
+// SDL2 Textures
+SDL_Texture* screenBuffer = nullptr;
+SDL_Texture* nametableBuffer0 = nullptr;
+SDL_Texture* nametableBuffer1 = nullptr;
+SDL_Texture* spriteBuffer = nullptr;
+SDL_Texture* patternBuffer0 = nullptr;
+SDL_Texture* patternBuffer1 = nullptr;
 
-void audio_callback(void* userdata, Uint8* stream, int len) 
-{
-    int16_t* output = reinterpret_cast<int16_t*>(stream);
-    int samples_needed = len / sizeof(int16_t);
-    int available_data = 0;
+// SDL2 Windows & Renderers
+SDL_Window* nametable_window = nullptr;
+SDL_Renderer* nametable_renderer = nullptr;
 
-    available_data = (write_pos >= read_pos) ? (write_pos - read_pos) : ((BUFFER_SIZE - read_pos) + write_pos);
+SDL_Window* pattern_window = nullptr;
+SDL_Renderer* pattern_renderer = nullptr;
 
-    if (available_data >= samples_needed) 
-    {
-        if (read_pos + samples_needed > BUFFER_SIZE) 
-        {
-            int first_chunk_size = BUFFER_SIZE - read_pos;
-            std::copy(audio_buffer + read_pos, audio_buffer + BUFFER_SIZE, output);
-            std::copy(audio_buffer, audio_buffer + (samples_needed - first_chunk_size), output + first_chunk_size);
-        } 
-        else 
-            std::copy(audio_buffer + read_pos, audio_buffer + read_pos + samples_needed, output);
-    
-        read_pos = (read_pos + samples_needed) & (BUFFER_SIZE-1);
-    }
-    
-    else if(game_not_initialized)
-        std::fill(output, output + samples_needed, 0);
-}
+SDL_Window* sprite_window = nullptr;
+SDL_Renderer* sprite_renderer = nullptr;
+
+// FPS Management
+double desired_fps = 60.0;
+double frame_time = 1000.0 / desired_fps;
+bool show_fps = false;
+int FPS;
+int padding;
+
+// UI Elements
+bool showWindow = false;
+float windowDuration = 3.0f;  // Time in seconds to fully display the window
+float fadeDuration = 0.25f;   // Time in seconds for the fade-out effect
+std::chrono::time_point<std::chrono::steady_clock> windowStartTime;
+using namespace std::chrono;
+
+void audio_callback(void* userdata, Uint8* stream, int len); 
 
 class SDL_manager
 {
@@ -123,8 +151,6 @@ class SDL_manager
         SDL_Window *window;
 };
 
-
-
 class NES
 {
     public:
@@ -142,6 +168,7 @@ class NES
 
         bool load_game(std::string filename)
         {
+            reset_flag = true;
             std::string extension = std::filesystem::path(filename).extension().string();
             if(extension == ".nes" || extension == ".NES")
             {
@@ -159,7 +186,7 @@ class NES
 
             else
                 log = std::string("File does not have .nes extension");
-
+            reset_flag = false;
             return game_loaded;
         }
 
@@ -167,7 +194,7 @@ class NES
         {
             current_frame = ppu->get_frame();
         
-            while (current_frame == ppu->get_frame() && !pause) 
+            while (current_frame == ppu->get_frame() && !pause && !reset_flag) 
             {          
                 cpu_cycle_accumulator+= 1.0;
 
@@ -288,8 +315,10 @@ class NES
 
         void reload_game()
         {
+            reset_flag = true;
             reset();
             load_game(old_game_filename);
+            reset_flag = false;
         }
 
         void alternate_zapper()
@@ -348,12 +377,11 @@ class NES
         double apu_cycle_accumulator = 0;
         double last_sample = 0;
         double cpu_cycle_accumulator = 0;
-
+        bool reset_flag = false;
         std::string game_title = "";
         std::string region_info = "NTSC";
 
 };
-
 
 //SDL2
 void destroy_textures();
@@ -366,85 +394,7 @@ void cleanupImGui();
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
 void draw_pattern_table(std::shared_ptr<PPU> ppu);
 
-
-SDL_Texture* screenBuffer;
-SDL_Texture* nametableBuffer0;
-SDL_Texture* nametableBuffer1;
-SDL_Texture* spriteBuffer;
-SDL_Texture* patternBuffer0;
-SDL_Texture* patternBuffer1;
-
-SDL_Window* nametable_window;
-SDL_Renderer* nametable_renderer;
-
-SDL_Window* pattern_window;
-SDL_Renderer* pattern_renderer;
-
-SDL_Window* sprite_window;
-SDL_Renderer* sprite_renderer;
-
-double desired_fps = 60.0;
-double frame_time = (1000.0 / desired_fps);
-bool show_fps = false;
-int FPS;
-int padding;
-
-bool showWindow = false;
-float windowDuration = 3.0f;  // Time in seconds to fully display the window
-float fadeDuration = 0.25f;    // Time in seconds for the fade-out effect
-std::chrono::time_point<std::chrono::steady_clock> windowStartTime;
-
-using namespace std::chrono;
-
-
-#include <atomic>
-#include <thread>
-#include <mutex>
-
-std::atomic<bool> running(true);
-std::mutex framebuffer_mutex;
-std::vector<uint32_t> screen(256 * 240, 0);
-
-void emulate_nes(NES * nes)
-{
-    auto last_time = std::chrono::high_resolution_clock::now();
-    int frame_count = 0;
-    while (running)
-    {
-        // Frame timing start
-        auto frame_start = high_resolution_clock::now();
-
-        
-        if (nes->is_game_loaded())
-            nes->run_frame();
-
-        {
-            std::lock_guard<std::mutex> lock(framebuffer_mutex);
-            screen = nes->get_ppu()->get_screen();
-        }
-
-        auto frame_end = high_resolution_clock::now();
-        duration<double, std::milli> frame_duration = frame_end - frame_start;
-
-        while (frame_duration.count() < frame_time)
-        {
-            frame_end = high_resolution_clock::now();
-            frame_duration = frame_end - frame_start;
-        }
-
-        // FPS calculation
-        frame_count++;
-        auto current_time = high_resolution_clock::now();
-        duration<double> elapsed_seconds = current_time - last_time;
-        
-        if (elapsed_seconds.count() >= 1.0)
-        {
-            FPS = frame_count;
-            frame_count = 0;
-            last_time = current_time;
-        }
-    }
-}
+void emulate_nes(NES * nes);
 
 int main(int argc, char *argv[])
 {
@@ -508,7 +458,72 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+void emulate_nes(NES * nes)
+{
+    auto last_time = std::chrono::high_resolution_clock::now();
+    int frame_count = 0;
+    while (running)
+    {
+        // Frame timing start
+        auto frame_start = high_resolution_clock::now();
 
+        
+        if (nes->is_game_loaded())
+            nes->run_frame();
+
+        {
+            std::lock_guard<std::mutex> lock(framebuffer_mutex);
+            screen = nes->get_ppu()->get_screen();
+        }
+
+        auto frame_end = high_resolution_clock::now();
+        duration<double, std::milli> frame_duration = frame_end - frame_start;
+
+        while (frame_duration.count() < frame_time)
+        {
+            frame_end = high_resolution_clock::now();
+            frame_duration = frame_end - frame_start;
+        }
+
+        // FPS calculation
+        frame_count++;
+        auto current_time = high_resolution_clock::now();
+        duration<double> elapsed_seconds = current_time - last_time;
+        
+        if (elapsed_seconds.count() >= 1.0)
+        {
+            FPS = frame_count;
+            frame_count = 0;
+            last_time = current_time;
+        }
+    }
+}
+
+void audio_callback(void* userdata, Uint8* stream, int len) 
+{
+    int16_t* output = reinterpret_cast<int16_t*>(stream);
+    int samples_needed = len / sizeof(int16_t);
+    int available_data = 0;
+
+    available_data = (write_pos >= read_pos) ? (write_pos - read_pos) : ((BUFFER_SIZE - read_pos) + write_pos);
+
+    if (available_data >= samples_needed) 
+    {
+        if (read_pos + samples_needed > BUFFER_SIZE) 
+        {
+            int first_chunk_size = BUFFER_SIZE - read_pos;
+            std::copy(audio_buffer + read_pos, audio_buffer + BUFFER_SIZE, output);
+            std::copy(audio_buffer, audio_buffer + (samples_needed - first_chunk_size), output + first_chunk_size);
+        } 
+        else 
+            std::copy(audio_buffer + read_pos, audio_buffer + read_pos + samples_needed, output);
+    
+        read_pos = (read_pos + samples_needed) & (BUFFER_SIZE-1);
+    }
+    
+    else if(game_not_initialized)
+        std::fill(output, output + samples_needed, 0);
+}
 
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer* renderer)
 {
@@ -638,6 +653,10 @@ void handle_events(NES* nes, SDL_manager* manager)
                     frame_time = (1000.0 / desired_fps);
                     SDL_SetWindowTitle(manager->get_window(), ("CalascioNES" + nes->get_info()).c_str());
                     break;
+                    case SDL_SCANCODE_R:
+                        if (nes->is_game_loaded())
+                            nes->reload_game();
+                        break;
                     
                 default: break;
             }
@@ -670,7 +689,6 @@ void handle_events(NES* nes, SDL_manager* manager)
         }
     }   
 }
-
 
 void initImGui(SDL_Window* window, SDL_Renderer* renderer) 
 {
@@ -724,7 +742,7 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager)
                     nes->change_pause();
             }
 
-            if(ImGui::MenuItem("Reset"))
+            if(ImGui::MenuItem("Reset", "R"))
             {
                 desired_fps = (nes->get_region() > 0) ? 50 : 60;
                 frame_time = (1000.0 / desired_fps);
