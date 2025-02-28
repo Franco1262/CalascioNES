@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 #include <chrono>
+#include "windows.h"
 
 // NES Emulator Components
 #include "CPU.h"
@@ -72,7 +73,7 @@ SDL_Renderer* sprite_renderer = nullptr;
 
 // FPS Management
 double desired_fps = 60.0;
-double frame_time = 1000.0 / desired_fps;
+std::atomic<double> frame_time = 1000.0 / desired_fps;
 bool show_fps = false;
 int FPS;
 int padding;
@@ -394,13 +395,12 @@ void cleanupImGui();
 void draw_frame(std::shared_ptr<PPU> ppu, SDL_Renderer*);
 void draw_pattern_table(std::shared_ptr<PPU> ppu);
 
-void emulate_nes(NES * nes);
+void emulate_nes(NES * nes, SDL_manager* manager);
 
 int main(int argc, char *argv[])
 {
     NES nes;
     SDL_manager manager;
-
     if(argc > 1)
     {
         std::string filename(argv[1]);
@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
     initImGui(manager.get_window(), manager.get_renderer());
     screenBuffer = SDL_CreateTexture(manager.get_renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
-    std::thread emulation_thread(emulate_nes, &nes);
+    std::thread emulation_thread(emulate_nes, &nes, &manager);
 
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
@@ -424,26 +424,31 @@ int main(int argc, char *argv[])
     ImGui::Render();
 
     SDL_SetWindowSize(manager.get_window(), SCREEN_WIDTH, SCREEN_HEIGHT + padding);
-
     while (running) 
     {
-        
         handle_events(&nes, &manager);
-        
-        // Start ImGui frame
-        ImGui_ImplSDLRenderer2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+    
+        // Render ImGui only when needed
+        static auto last_ui_update = std::chrono::high_resolution_clock::now();
+        auto now = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double, std::milli>(now - last_ui_update).count();
+    
+        if (elapsed > (1000.0 / 30.0)) // ~30 FPS for UI updates
+        {
+            ImGui_ImplSDLRenderer2_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
+            handle_imGui(&nes, manager.get_renderer(), &manager);
+            last_ui_update = now;
+        }
 
-        // Clear screen to black
-        SDL_SetRenderDrawColor(manager.get_renderer(), 0, 0, 0, 255);
-        SDL_RenderClear(manager.get_renderer());
-
-        draw_frame(nes.get_ppu(), manager.get_renderer()); // Render frame
-
-        handle_imGui(&nes, manager.get_renderer(), &manager); // Render ImGui UI
-        SDL_RenderPresent(manager.get_renderer()); // Display rendered frame
+        draw_frame(nes.get_ppu(), manager.get_renderer());
+        ImGui::Render();
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), manager.get_renderer());
+        SDL_RenderPresent(manager.get_renderer());
+        SDL_Delay(3);
     }
+    
 
     emulation_thread.join();
     SDL_DestroyRenderer(nametable_renderer);
@@ -454,20 +459,20 @@ int main(int argc, char *argv[])
     SDL_DestroyWindow(sprite_window);
     cleanupImGui();
     destroy_textures();
-
     return 0;
 }
 
-void emulate_nes(NES * nes)
+void emulate_nes(NES *nes, SDL_manager *manager)
 {
-    auto last_time = std::chrono::high_resolution_clock::now();
+    using namespace std::chrono;
+    auto last_time = high_resolution_clock::now();
     int frame_count = 0;
+
     while (running)
     {
-        // Frame timing start
+        auto frame_time_ms = duration<double, std::milli>(frame_time);
         auto frame_start = high_resolution_clock::now();
 
-        
         if (nes->is_game_loaded())
             nes->run_frame();
 
@@ -476,25 +481,27 @@ void emulate_nes(NES * nes)
             screen = nes->get_ppu()->get_screen();
         }
 
-        auto frame_end = high_resolution_clock::now();
-        duration<double, std::milli> frame_duration = frame_end - frame_start;
-
-        while (frame_duration.count() < frame_time)
-        {
-            frame_end = high_resolution_clock::now();
-            frame_duration = frame_end - frame_start;
-        }
-
         // FPS calculation
         frame_count++;
         auto current_time = high_resolution_clock::now();
         duration<double> elapsed_seconds = current_time - last_time;
-        
+
         if (elapsed_seconds.count() >= 1.0)
         {
             FPS = frame_count;
             frame_count = 0;
             last_time = current_time;
+        }
+
+        auto frame_end = high_resolution_clock::now();
+        auto elapsed = duration<double, std::milli>(frame_end - frame_start);
+
+        auto remaining_time = frame_time_ms - elapsed;
+        auto busy_wait_until = high_resolution_clock::now() + remaining_time;
+        if(remaining_time.count() > 0)
+        {
+            SDL_Delay(remaining_time.count() * 0.90);
+            while (high_resolution_clock::now() < busy_wait_until) {} 
         }
     }
 }
@@ -900,7 +907,4 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager)
         ImGui::PopStyleColor(); // Restore the previous text color
         ImGui::End();
     }
-
-    ImGui::Render();
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 }
