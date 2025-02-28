@@ -122,14 +122,12 @@ class SDL_manager
             desired_spec.channels = 1;         // Mono audio
             desired_spec.samples = 1024;        // Buffer size (lower = less latency)
             desired_spec.callback = audio_callback;
-            auto audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);
+            audio_device = SDL_OpenAudioDevice(NULL, 0, &desired_spec, NULL, 0);
+            SDL_PauseAudioDevice(audio_device, 0);
             if (audio_device == 0) {
                 std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
                 exit(1);
-            }
-
-            SDL_PauseAudioDevice(audio_device, 0);
-            
+            }            
         }
         ~SDL_manager()
         {
@@ -147,9 +145,15 @@ class SDL_manager
             return window;
         }
 
+        SDL_AudioDeviceID get_audio_device()
+        {
+            return audio_device;
+        }
+
     private:
         SDL_Renderer *renderer;
         SDL_Window *window;
+        SDL_AudioDeviceID audio_device;
 };
 
 class NES
@@ -180,6 +184,8 @@ class NES
                 if(std::filesystem::is_regular_file(log))
                 {
                     log = std::filesystem::path(log).stem().string();
+                    if(log.length() > 50)
+                        log = log.substr(0, 50) + "...";
                     game_title = log;
                     game_not_initialized = false;
                 }
@@ -273,9 +279,10 @@ class NES
         }
         
 
-        inline void change_pause()
+        inline void change_pause(SDL_AudioDeviceID audio_device)
         {
             pause = !pause;
+            SDL_PauseAudioDevice(audio_device, pause);
         }
 
         inline void change_timing()
@@ -446,7 +453,7 @@ int main(int argc, char *argv[])
         ImGui::Render();
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), manager.get_renderer());
         SDL_RenderPresent(manager.get_renderer());
-        SDL_Delay(3);
+        SDL_Delay(2);
     }
     
 
@@ -500,7 +507,7 @@ void emulate_nes(NES *nes, SDL_manager *manager)
         auto busy_wait_until = high_resolution_clock::now() + remaining_time;
         if(remaining_time.count() > 0)
         {
-            SDL_Delay(remaining_time.count() * 0.90);
+            SDL_Delay(remaining_time.count() * 0.95);
             while (high_resolution_clock::now() < busy_wait_until) {} 
         }
     }
@@ -645,7 +652,7 @@ void handle_events(NES* nes, SDL_manager* manager)
             {
                 case SDL_SCANCODE_P:
                     if (nes->is_game_loaded())
-                        nes->change_pause();
+                        nes->change_pause(manager->get_audio_device());
                     break;
 
                 case SDL_SCANCODE_ESCAPE:
@@ -717,12 +724,14 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager)
 {
 
     if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
+        if (ImGui::BeginMenu("File")) 
+        {
             if (ImGui::MenuItem("Open")) 
             {
+                nes->change_pause(manager->get_audio_device());
                 nfdchar_t *outPath = NULL;
                 nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
-                    
+                nes->change_pause(manager->get_audio_device());
                 if ( result == NFD_OKAY ) 
                 {
                     nes->load_game(outPath);
@@ -746,7 +755,7 @@ void handle_imGui(NES* nes, SDL_Renderer* renderer, SDL_manager* manager)
             if(ImGui::MenuItem("Pause","P"))
             {
                 if(nes->is_game_loaded())
-                    nes->change_pause();
+                    nes->change_pause(manager->get_audio_device());
             }
 
             if(ImGui::MenuItem("Reset", "R"))
