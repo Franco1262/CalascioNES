@@ -37,10 +37,6 @@ const double SAMPLE_RATE = 44100.0;
 const double apu_ratio_NTSC = CPU_CLOCK_NTSC / SAMPLE_RATE;
 const double apu_ratio_PAL = CPU_CLOCK_PAL / SAMPLE_RATE;
 
-// CPU Tick Ratios
-const double cpu_tick_ratio_ntsc = MASTER_CLOCK_NTSC / CPU_CLOCK_NTSC;
-const double cpu_tick_ratio_pal = MASTER_CLOCK_PAL / CPU_CLOCK_PAL;
-
 // Audio Buffer
 constexpr int BUFFER_SIZE = 8192;
 int16_t audio_buffer[BUFFER_SIZE];
@@ -203,77 +199,66 @@ class NES
         
             while (current_frame == ppu->get_frame() && !pause && !reset_flag) 
             {          
-                cpu_cycle_accumulator+= 1.0;
-
                 //NTSC NES
                 if(!region)
                 {
-                    if(cpu_cycle_accumulator >= cpu_tick_ratio_ntsc)
+                    cpu->tick();
+                    apu->tick();
+
+                    apu_cycle_accumulator += 1;
+        
+                    if (apu_cycle_accumulator >= apu_ratio_NTSC) // 1 audio sample every 40.584 APU cycles
                     {
-                        cpu->tick();
-                        apu->tick();
-    
-                        apu_cycle_accumulator += 1;
-            
-                        if (apu_cycle_accumulator >= apu_ratio_NTSC) // 1 audio sample every 40.584 APU cycles
+                        double alpha = apu_cycle_accumulator - apu_ratio_NTSC;
+                        double previous_sample = last_sample;
+                        double current_sample = apu->get_output();
+                        
+                        // Linear interpolation
+                        double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
                         {
-                            double alpha = apu_cycle_accumulator - apu_ratio_NTSC;
-                            double previous_sample = last_sample;
-                            double current_sample = apu->get_output();
-                            
-                            // Linear interpolation
-                            double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
-                            {
-                                audio_buffer[write_pos] = interpolated_sample * 32767;
-                                write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
-                            }
-                
-                            last_sample = current_sample;
-                            apu_cycle_accumulator -= apu_ratio_NTSC;
+                            audio_buffer[write_pos] = interpolated_sample * 32767;
+                            write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
                         }
-    
-                        ppu->tick();
-                        ppu->tick();
-                        ppu->tick();
-    
-                        cpu_cycle_accumulator -= cpu_tick_ratio_ntsc;
+            
+                        last_sample = current_sample;
+                        apu_cycle_accumulator -= apu_ratio_NTSC;
                     }
+
+                    ppu->tick();
+                    ppu->tick();
+                    ppu->tick();
                 }
+
                 else //PAL NES
                 {
-                    if(cpu_cycle_accumulator >= cpu_tick_ratio_pal)
+                    cpu->tick();
+                    apu->tick();
+
+                    apu_cycle_accumulator += 1;
+        
+                    if (apu_cycle_accumulator >= apu_ratio_PAL) // 1 audio sample every 40.584 APU cycles
                     {
-                        cpu->tick();
-                        apu->tick();
-    
-                        apu_cycle_accumulator += 1;
-            
-                        if (apu_cycle_accumulator >= apu_ratio_PAL) // 1 audio sample every 40.584 APU cycles
+                        double alpha = apu_cycle_accumulator - apu_ratio_PAL;
+                        double previous_sample = last_sample;
+                        double current_sample = apu->get_output();
+                        
+                        // Linear interpolation
+                        double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
                         {
-                            double alpha = apu_cycle_accumulator - apu_ratio_PAL;
-                            double previous_sample = last_sample;
-                            double current_sample = apu->get_output();
-                            
-                            // Linear interpolation
-                            double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
-                            {
-                                audio_buffer[write_pos] = interpolated_sample * 32767;
-                                write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
-                            }
-                
-                            last_sample = current_sample;
-                            apu_cycle_accumulator -= apu_ratio_PAL;
+                            audio_buffer[write_pos] = interpolated_sample * 32767;
+                            write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
                         }
-    
-                        ppu_accumulator += 3.2;
-                        while (ppu_accumulator >= 1.0)
-                        { 
-                            ppu->tick();
-                            ppu_accumulator -= 1.0;
-                        }
-    
-                        cpu_cycle_accumulator -= cpu_tick_ratio_pal;
-                    }                  
+            
+                        last_sample = current_sample;
+                        apu_cycle_accumulator -= apu_ratio_PAL;
+                    }
+
+                    ppu_accumulator += 3.2;
+                    while (ppu_accumulator >= 1.0)
+                    { 
+                        ppu->tick();
+                        ppu_accumulator -= 1.0;
+                    }              
                 }        
             }
         }
@@ -384,7 +369,6 @@ class NES
         bool zapper_connected = false;
         double apu_cycle_accumulator = 0;
         double last_sample = 0;
-        double cpu_cycle_accumulator = 0;
         bool reset_flag = false;
         std::string game_title = "";
         std::string region_info = "NTSC";
