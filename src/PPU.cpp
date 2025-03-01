@@ -5,8 +5,6 @@
 #include <sstream>
 #include <iomanip>
 
-#define IS_PPUMASK_SET(mask) (((mask) & 0x10) || ((mask) & 0x8))
-
 PPU::PPU() : w(false) ,cycles(0), scanline(0)
 {
     odd = false;
@@ -28,12 +26,12 @@ PPU::~PPU() {}
 void PPU::tick()
 {
     //Delay for toggling rendering, important for Battletoads
-    if((is_rendering_enabled != IS_PPUMASK_SET(PPUMASK)))
+    if((is_rendering_enabled != ((PPUMASK >> 3) & 0x3)))
     {
         toggling_rendering_counter--;
         if(toggling_rendering_counter == 0)
         {
-            is_rendering_enabled = IS_PPUMASK_SET(PPUMASK);
+            is_rendering_enabled = ((PPUMASK >> 3) & 0x3);
             toggling_rendering_counter = 3;
         }
     }
@@ -162,7 +160,7 @@ void PPU::tick()
             }
 
             //Drawing sprites
-            if( (PPUMASK & 0x10)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
+            if((is_rendering_enabled & 0x2)  && cycles == 256 && scanline != pre_render_scanline && scanline != 0)
                 draw_sprite_pixel();
             //Clearing OAMADDR
             if( (cycles >= 257) && (cycles <= 320) )
@@ -171,8 +169,8 @@ void PPU::tick()
     }
 
     //When background is disabled draw the ext color
-    else if((scanline < 240) && cycles > 0 && cycles < 257)
-            draw_background_pixel();
+    if(((is_rendering_enabled & 1) == 0) && (scanline < 240) && cycles > 0 && cycles < 257)
+        draw_background_pixel();
 
     //Clearing secondary OAM
     if((cycles > 0) && (cycles < 65) && (scanline < 240))
@@ -975,7 +973,7 @@ void PPU::soft_reset()
     i = 0;
 
     // Reset rendering flags
-    is_rendering_enabled = false;
+    is_rendering_enabled = 0;
 
     // Reset sprite 0 hit handling
     sprite_0_next_scanline = false;

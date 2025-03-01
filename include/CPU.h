@@ -3,7 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <memory>
-#include "logger.h"
+#include "Logger.h"
 
 class Bus;
 class CPU
