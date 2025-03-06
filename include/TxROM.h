@@ -32,5 +32,4 @@ class TxROM : public Mapper
         uint8_t irq_counter = 0;
         bool irq_enable;
         bool irq_reload;
-        Logger logger;
 };

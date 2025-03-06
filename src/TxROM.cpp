@@ -1,7 +1,7 @@
 #include "TxROM.h"
 #include "Cartridge.h"
 
-TxROM::TxROM(int n_prg_rom_banks, int n_chr_rom_banks, std::shared_ptr<Cartridge> cart) : Mapper(n_prg_rom_banks * 2, n_chr_rom_banks, cart), logger("TXROM.txt")
+TxROM::TxROM(int n_prg_rom_banks, int n_chr_rom_banks, std::shared_ptr<Cartridge> cart) : Mapper(n_prg_rom_banks * 2, n_chr_rom_banks, cart)
 {
     select_bank = 0;
     R0 = 0;
@@ -39,8 +39,8 @@ void TxROM::cpu_writes(uint16_t address, uint8_t value)
                 case 3: R3 = value; break;
                 case 4: R4 = value; break;
                 case 5: R5 = value; break;
-                case 6: R6 = (value & 0x3F); break; // Ignore top 2 bits
-                case 7: R7 = (value & 0x3F); break; // Ignore top 2 bits
+                case 6: R6 = (value & 0x3F) & (n_prg_rom_banks-1); break; // Ignore top 2 bits
+                case 7: R7 = (value & 0x3F) & (n_prg_rom_banks-1); break; // Ignore top 2 bits
             }
         }
     }
@@ -62,18 +62,11 @@ void TxROM::cpu_writes(uint16_t address, uint8_t value)
 
     if(address >= 0xE000 && address <= 0xFFFF)
     {
-        if((address & 0x1))
+        if(address & 0x1)
             cart->set_irq_enable(1);
         else
             cart->set_irq_enable(0);
     }
-
-/*     logger.log("Address: " + [address, value]() 
-    {
-        std::ostringstream oss;
-        oss << std::hex << address << " Value: " << (int)value;  // Format mapped_address in hex
-        return oss.str();  // Return the formatted hex address as a string
-    }()); */
 }
 
 uint32_t TxROM::cpu_reads(uint16_t address)

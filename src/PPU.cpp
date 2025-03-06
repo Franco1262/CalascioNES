@@ -1027,7 +1027,6 @@ bool PPU::get_frame() { return frame; }
 
 void PPU::clock_scanline_counter()
 {
-    std::cout << cycles << std::endl;
     if(sc.irq_counter == 0 || sc.irq_reload)
     {
         sc.irq_counter = sc.irq_latch;
@@ -1037,9 +1036,9 @@ void PPU::clock_scanline_counter()
     else
         sc.irq_counter--;
 
-    std::cout << (int)sc.irq_counter << std::endl;
     if (sc.irq_counter == 0 && sc.irq_enable)
     {
+        std::cout << "IRQ FIRED   ";
         bus->trigger_irq();   
     }  
 }

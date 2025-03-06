@@ -31,7 +31,7 @@ uint32_t SxROM::cpu_reads(uint16_t address)
         {
             case 0:
             case 1:
-                mapped_addr = (((prg_bank & 0x1E) >> 1) * 0x8000) + (address & 0x7FFF);;
+                mapped_addr = (((prg_bank & 0x1E)) * 0x4000) + (address & 0x7FFF);;
                 break; 
             case 2:
                 if(address < 0xC000) mapped_addr = address & 0x3FFF;
@@ -66,7 +66,7 @@ uint32_t SxROM::ppu_reads(uint16_t address)
         else
         {
             if(address >= 0x0000 && address < 0x2000)
-                mapped_addr = ( ((chr_bank_0 & 0xFE) >> 1) * 0x2000) + (address & 0x1FFF);
+                mapped_addr = ( ((chr_bank_0 & 0xFE)) * 0x1000) + (address & 0x1FFF);
         }
     }
     //CHR RAM
@@ -119,7 +119,7 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
                         chr_bank_1 = shift_register & 0x1F;
                         break;
                     case 3:
-                        prg_bank = shift_register & 0x0F;
+                        prg_bank = ((shift_register & 0x0F) & (n_prg_rom_banks-1));
                         break;                  
                 }  
                 n_write = 0; // Reset write count
