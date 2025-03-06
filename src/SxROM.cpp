@@ -1,7 +1,8 @@
 #include "SxROM.h"
+#include "Cartridge.h"
 #include <iostream>
 
-SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks, n_chr_rom_banks) 
+SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks, std::shared_ptr<Cartridge> cart) : Mapper(n_prg_rom_banks, n_chr_rom_banks, cart)
 {
     n_write = 0;
     shift_register = 0x10;
@@ -11,7 +12,6 @@ SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks)  : Mapper(n_prg_rom_banks
     chr_bank_1 = 0;
     prg_bank = 0;
     control = 0;
-    written_on_this_instruction = false;
     mirroring_mode = MIRROR::HORIZONTAL;
 }
 
@@ -99,7 +99,7 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
 
     else
     {
-        if(!written_on_this_instruction)
+        if(cart->is_new_instruction())
         {
             shift_register = (shift_register >> 1) | ((value & 1) << 4);
             n_write++;
@@ -127,7 +127,6 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
             }
         }
     }
-    written_on_this_instruction = true;
 }
 
 
@@ -157,9 +156,4 @@ void SxROM::update_state()
 MIRROR SxROM::get_mirroring_mode()
 {
     return mirroring_mode;
-}
-
-void SxROM::new_instruction()
-{
-    written_on_this_instruction = false;
 }

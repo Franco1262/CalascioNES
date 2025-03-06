@@ -23,6 +23,8 @@ class CPU
 
         void reset();
         void soft_reset();
+        bool is_new_instruction();
+        void trigger_irq();
 
     private:
         int cycles = 0;
@@ -60,6 +62,8 @@ class CPU
         uint8_t low_byte;
         uint16_t h = 0x0000;
         uint16_t l = 0x0000;
+        bool new_instruction = true;
+        bool pending_irq = false;
         
         uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
 

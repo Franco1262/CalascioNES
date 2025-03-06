@@ -75,7 +75,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4003:
             pulse1.timer = (pulse1.timer & 0x00FF) | ((value & 0x7) << 8);
-            pulse1.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            if ((status_register & 0x01))
+                pulse1.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
 
             //Restart envelope
             pulse1.envelope_decay_level_counter = 15;
@@ -103,7 +104,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x4007:
             pulse2.timer = (pulse2.timer & 0x00FF) | ((value & 0x7) << 8);
-            pulse2.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            if ((status_register & 0x02))
+                pulse2.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             //Restart envelope
             pulse2.envelope_decay_level_counter = 15;
             //Side effects of writing to this register
@@ -119,7 +121,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             break;
         case 0x400B:
             triangle.timer = (triangle.timer & 0x00FF) | ((value & 0x7) << 8);
-            triangle.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            if ((status_register & 0x04))
+                triangle.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             triangle.linear_counter_reload = true;
             break;
         case 0x400C:
@@ -136,7 +139,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             noise.loop_noise = value & 0x80;
             break;
         case 0x400F:
-            noise.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
+            if ((status_register & 0x08))
+                noise.length_counter_load = length_counter_lookup_table[((value & 0xF8) >> 3)];
             noise.envelope_decay_level_counter = 15;
             noise.start_flag = true;
             break;
@@ -657,9 +661,5 @@ void APU::soft_reset()
     apu_cycles_counter = 0.0;
 
     // Reset all lookup tables and sequences
-    sequence_lookup_table.clear();
-    length_counter_lookup_table.clear();
-    triangle_sequence.clear();
-    ntsc_noise_period.clear();
-    pal_noise_period.clear();
+    region = 0;
 }

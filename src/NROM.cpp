@@ -1,4 +1,5 @@
 #include "NROM.h"
+#include "Cartridge.h"
 
 uint32_t NROM::cpu_reads(uint16_t address)
 {

@@ -18,6 +18,7 @@ PPU::PPU() : w(false) ,cycles(0), scanline(0)
     pre_render_scanline = 261;
     secondary_oam_index = 0;
     i = 0;
+    mapper = 0;
 }
 
 PPU::~PPU() {}
@@ -92,7 +93,7 @@ void PPU::tick()
             
             //Sprite fetches
             if((cycles > 256) && (cycles < 321))
-            {         
+            {      
                 switch(cycles & 0x7)
                 {
                     case 1:
@@ -196,6 +197,8 @@ void PPU::tick()
         frame = !frame;   
     } 
 
+    if(mapper == 4)
+        detect_a12_rising_edge();
     cycles++;
     if(cycles == 341)
     {
@@ -986,6 +989,12 @@ void PPU::soft_reset()
 
     open_bus = 0;
     supress = false;
+    ppu_timing = 0;
+
+    sc.irq_counter = 0;
+    sc.irq_enable = false;
+    sc.irq_latch = 0;
+    sc.irq_reload = false;
 }
 
 //Functions useful for zapper
@@ -1015,3 +1024,43 @@ void PPU::set_zapper(bool zapper)
 }
 
 bool PPU::get_frame() { return frame; }
+
+void PPU::clock_scanline_counter()
+{
+    std::cout << cycles << std::endl;
+    if(sc.irq_counter == 0 || sc.irq_reload)
+    {
+        sc.irq_counter = sc.irq_latch;
+        sc.irq_reload = false;
+    }
+
+    else
+        sc.irq_counter--;
+
+    std::cout << (int)sc.irq_counter << std::endl;
+    if (sc.irq_counter == 0 && sc.irq_enable)
+    {
+        bus->trigger_irq();   
+    }  
+}
+
+void PPU::detect_a12_rising_edge()
+{
+    if(!(v & 0x1000))
+    {
+        M2_ppu_cycles++;
+        if(cycles & 0x3)
+        {
+            M2_ppu_cycles = 0;
+            M2_falling_edges++; 
+        }
+    }
+
+    else
+    {
+        if(M2_falling_edges >= 3)
+            clock_scanline_counter();
+        M2_falling_edges = 0;
+        M2_ppu_cycles = 0;
+    }
+}

@@ -1,5 +1,5 @@
 #include "Cartridge.h"
-#include "PPU.h"
+#include "Bus.h"
 
 const int PRG_ROM_BANK_SIZE = 0x4000;
 const int CHR_ROM_BANK_SIZE = 0x2000;
@@ -15,6 +15,7 @@ Cartridge::~Cartridge() { }
 uint8_t Cartridge::ppu_reads(uint16_t address)
 {
     uint8_t data;
+
     if(n_chr_rom_banks == 0)
         data = CHR_RAM[mapper->ppu_reads(address)];
        
@@ -38,7 +39,9 @@ uint8_t Cartridge::cpu_reads(uint16_t address)
         data = PRG_RAM[mapper->cpu_reads(address) & 0x7FFF];
     
     else if(address >= 0x8000 && address <= 0xFFFF)
+    {
         data = PRG_ROM[mapper->cpu_reads(address)];
+    }
     return data;
 }
 
@@ -47,19 +50,22 @@ void Cartridge::cpu_writes(uint16_t address, uint8_t value)
     if(address >= 0x6000 && address < 0x8000)
         PRG_RAM[mapper->cpu_reads(address) & 0x7FFF] = value;
 
-    else if(address >= 0x8000 && address <= 0xFFFF)
+    if(address >= 0x8000 && address <= 0xFFFF)
         mapper->cpu_writes(address, value);  
 }
 
 MIRROR Cartridge::getMirror()
 {
-    if (mapper_id == 1 || mapper_id == 7) 
+    if (mapper_id == 1 || mapper_id == 7 || mapper_id == 4) 
         mirror_mode = mapper->get_mirroring_mode();
 
     return mirror_mode;
 }
 
-void Cartridge::new_instruction() { mapper->new_instruction(); }
+bool Cartridge::is_new_instruction() 
+{ 
+    return bus->is_new_instruction();
+}
 
 bool Cartridge::load_game(const std::string filename, std::string& log)
 {
@@ -122,7 +128,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
             ok = false;
             return ok;
         }
-
+        
         // Read CHR-ROM
         if (n_chr_rom_banks > 0) 
         {
@@ -143,14 +149,16 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
 
         // Calculate mapper ID and initialize mapper
         mapper_id = (((header.flag6 & 0xF0) >> 4) | (header.flag7 & 0xF0) | ((header.mapper & 0x0F) << 8));
+        bus->set_mapper(mapper_id);
 
         switch (mapper_id)
         {
-            case 0: mapper = std::make_unique<NROM>(n_prg_rom_banks, n_chr_rom_banks); break;
-            case 2: mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
-            case 3: mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks); break;
-            case 1: mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
-            case 7: mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks); break;
+            case 0: mapper = std::make_unique<NROM>(n_prg_rom_banks, n_chr_rom_banks,  shared_from_this()); break;
+            case 2: mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
+            case 3: mapper = std::make_unique<CNROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
+            case 4: mapper = std::make_unique<TxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
+            case 1: mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
+            case 7: mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
             default:
                 log = std::string("Error: Unsupported mapper ID ") + std::to_string((int)mapper_id);
                 ok =  false;
@@ -179,4 +187,29 @@ void Cartridge::soft_reset()
     PRG_ROM.clear();
     mapper = nullptr;
     header = Header{};
+}
+
+void Cartridge::connect_bus(std::shared_ptr<Bus> bus)
+{
+    this->bus = bus;
+}
+
+void Cartridge::set_irq_latch(uint8_t value)
+{
+    bus->set_irq_latch(value);
+}
+
+void Cartridge::set_irq_enable(bool value)
+{
+    bus->set_irq_enable(value);
+}
+
+void Cartridge::set_irq_reload()
+{
+    bus->set_irq_reload();
+}
+
+uint8_t Cartridge::get_mapper()
+{
+    return mapper_id;
 }

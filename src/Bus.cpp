@@ -4,11 +4,12 @@
 #include "APU.h"
 #include "PPU.h"
 
-Bus::Bus(std::shared_ptr<PPU> ppu,  std::shared_ptr<Cartridge> cart, std::shared_ptr<APU> apu)
+Bus::Bus(std::shared_ptr<PPU> ppu,  std::shared_ptr<Cartridge> cart, std::shared_ptr<APU> apu, std::shared_ptr<CPU> cpu)
 {
     this->cart = cart;
     this->ppu = ppu;
     this->apu = apu;
+    this->cpu = cpu;
 }
 
 Bus::~Bus() {}
@@ -189,9 +190,9 @@ bool Bus::get_nmi()
     return NMI;
 }
 
-void Bus::new_instruction()
+bool Bus::is_new_instruction()
 {
-    cart->new_instruction();  
+    return cpu->is_new_instruction();
 }
 
 void Bus::soft_reset()
@@ -229,7 +230,32 @@ void Bus::set_light_sensed(bool hit)
     shift_register_controller2 = (shift_register_controller2 & ~(1 << 3)) | (zapper.light_sensed << 3);
 }
 
+void Bus::trigger_irq()
+{
+    cpu->trigger_irq();
+}
+
 void Bus::apu_irq()
 {
 
+}
+
+void Bus::set_irq_latch(uint8_t value)
+{
+    ppu->set_irq_latch(value);
+}
+
+void Bus::set_irq_enable(bool value)
+{
+    ppu->set_irq_enable(value);
+}
+
+void Bus::set_irq_reload()
+{
+    ppu->set_irq_reload();
+}
+
+void Bus::set_mapper(uint8_t value)
+{
+    ppu->set_mapper(value);
 }

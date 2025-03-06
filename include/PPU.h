@@ -3,6 +3,15 @@
 #include <memory>
 #include <vector>
 
+
+struct ScanlineCounter
+{
+    bool irq_enable = false;
+    uint8_t irq_counter = 0;
+    uint8_t irq_latch = 0;
+    bool irq_reload = false;
+};
+
 class Bus;
 class PPU
 {
@@ -52,7 +61,32 @@ class PPU
         void is_pixel_bright(int x, int y);
         void set_zapper(bool zapper);
         void check_target_hit(int x, int y);
+
+        void set_irq_latch(uint8_t value)
+        {
+            sc.irq_latch = value;
+        }
+        void set_irq_enable(bool value)
+        {
+            sc.irq_enable = value;
+        }
+        void set_irq_reload()
+        {
+            sc.irq_counter = 0;
+            sc.irq_reload = true;
+        }
+
+        void clock_scanline_counter();
+        void set_mapper(uint8_t value)
+        {
+            mapper = value;
+        }
+        
     private:
+        int M2_falling_edges = 0;
+        int M2_ppu_cycles = 0;
+        void detect_a12_rising_edge();
+
         //PPU Registers
         uint8_t PPUCTRL;
         uint8_t PPUMASK;
@@ -86,7 +120,7 @@ class PPU
         uint8_t secondary_oam[0x20] = {0};
         uint8_t scanline_sprite_buffer[0x30] = {0};
 
-
+        ScanlineCounter sc; //Scanline counter for MMC3
         //PPU internal registers
         uint16_t v; //Current VRAM address; 15bits
         uint16_t t; //Temporary VRAM address; 15bits
@@ -97,6 +131,8 @@ class PPU
         int cycles;
         int scanline;
         bool frame;
+
+        int mapper;
 
 
         uint8_t nametable_id;

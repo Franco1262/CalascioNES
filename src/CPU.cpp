@@ -138,6 +138,16 @@ void CPU::transfer_oam_bytes()
     }
 }
 
+bool CPU::is_new_instruction()
+{
+    return new_instruction;
+}
+
+void CPU::trigger_irq()
+{
+    pending_irq = true;
+}
+
 void CPU::tick()
 {
     get_cycle = !get_cycle;
@@ -158,9 +168,10 @@ void CPU::tick()
     {
         if (n_cycles == 0)
         {
-            bus->new_instruction(); //Function useful for MMC1
             fetch();
+            new_instruction = true;
         }
+        
         else if(n_cycles < Instr[opcode].cycles)
         {
             (this->*Instr[opcode].function)();
@@ -182,8 +193,12 @@ void CPU::tick()
 void CPU::fetch()
 {
     if(NMI)
+        opcode = 0x00;
+        
+    else if(pending_irq && !(P & 0x4))
     {
         opcode = 0x00;
+        pending_irq = false;
     }
 
     else
@@ -1177,7 +1192,7 @@ void CPU::DEC_abs()
         case 1: { ie_abs<1>(); break; }
         case 2: { ie_abs<2>(); break; }
         case 3: { data = read(effective_addr); n_cycles++; break; };
-        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 5:
             if(data == 0x00)
                 data = 0xFF;
@@ -1202,6 +1217,7 @@ void CPU::DEC_zp()
             break;
         case 3: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 4:
@@ -1230,7 +1246,8 @@ void CPU::DEC_zpx()
             ie_zpxy<3>(X); 
             break;
         case 4: 
-            write(effective_addr, data); 
+            write(effective_addr, data);
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 5:
@@ -1269,6 +1286,7 @@ void CPU::DEC_absx()
             break;
         case 5: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 6:
@@ -1319,6 +1337,7 @@ void CPU::INC_abs()
             break;
         case 4: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 5:
@@ -1345,6 +1364,7 @@ void CPU::INC_zp()
             break;
         case 3: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 4:
@@ -1374,6 +1394,7 @@ void CPU::INC_zpx()
             break;
         case 4: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 5:
@@ -1412,6 +1433,7 @@ void CPU::INC_absx()
             break;
         case 5: 
             write(effective_addr, data); 
+            new_instruction = false; 
             n_cycles++; 
             break;
         case 6:
@@ -2321,7 +2343,7 @@ void CPU::ASL_zp()
     {
         case 1: { ie_zeropage<1>(); break; }
         case 2: { ie_zeropage<2>(); break; }
-        case 3: { write(effective_addr, data); n_cycles++; break; };
+        case 3: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 4:
             P = (P  & 0xFE) | ((data & 0x80) >> 7);
             data <<= 1;
@@ -2340,7 +2362,7 @@ void CPU::ASL_zpx()
         case 1: { ie_zpxy<1>(X); break; }
         case 2: { n_cycles++; break;}
         case 3: { ie_zpxy<3>(X); break; }
-        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 5:
             P = (P  & 0xFE) | ((data & 0x80) >> 7);
             data <<= 1;
@@ -2359,7 +2381,7 @@ void CPU::ASL_abs()
         case 1: { ie_abs<1>(); break;}
         case 2: { ie_abs<2>(); break;}
         case 3: { data = read(effective_addr); n_cycles++; break; };
-        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 5:
             P = (P  & 0xFE) | ((data & 0x80) >> 7);
             data <<= 1;
@@ -2389,7 +2411,7 @@ void CPU::ASL_absx()
             data = read(effective_addr);
             n_cycles++;
             break;
-        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 5: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 6:
             P = (P  & 0xFE) | ((data & 0x80) >> 7);
             data <<= 1;
@@ -2456,7 +2478,7 @@ void CPU::LSR_abs()
         case 1: { ie_abs<1>(); break; }
         case 2: { ie_abs<2>(); break; }
         case 3: { data = read(effective_addr); n_cycles++; break; }
-        case 4: { write(effective_addr, data); n_cycles++; break; }
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; }
         case 5:
             P = (P  & 0xFE) | (data & 0x01);
             data >>= 1;
@@ -2486,7 +2508,7 @@ void CPU::LSR_absx()
             data = read(effective_addr);
             n_cycles++;
             break;
-        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 5: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 6:
             data = read(effective_addr);
             P = (P  & 0xFE) | (data & 0x01);
@@ -2564,7 +2586,7 @@ void CPU::ROL_abs()
         case 1: { ie_abs<1>(); break; }
         case 2: { ie_abs<2>(); break; }
         case 3: { data = read(effective_addr); n_cycles++; break; };
-        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 5:
             aux = (data >> 7) & 0x01;
             data <<= 1;
@@ -2596,7 +2618,7 @@ void CPU::ROL_absx()
             data = read(effective_addr);
             n_cycles++;
             break;
-        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 5: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 6:
             data = read(effective_addr);
             aux = (data >> 7) & 0x01;
@@ -2672,7 +2694,7 @@ void CPU::ROR_abs()
         case 1: { ie_abs<1>(); break; }
         case 2: { ie_abs<2>(); break; }
         case 3: { data = read(effective_addr); n_cycles++; break; };
-        case 4: { write(effective_addr, data); n_cycles++; break; };
+        case 4: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 5:
             aux = data & 0x01;
             data >>= 1;
@@ -2705,7 +2727,7 @@ void CPU::ROR_absx()
             data = read(effective_addr);
             n_cycles++;
             break;
-        case 5: { write(effective_addr, data); n_cycles++; break; };
+        case 5: { write(effective_addr, data); new_instruction = false; n_cycles++; break; };
         case 6:
             data = read(effective_addr);
             aux = data & 0x01;
@@ -3282,10 +3304,7 @@ void CPU::BRK()
                 NMI = false;
             }
             else
-            {
                 PC |= (read(0xFFFF) << 8);
-
-            }
             n_cycles++;
             break;
     }
@@ -3387,6 +3406,7 @@ void CPU::reset()
             n_cycles++;
             break;
         case 6:
+            PC = 0x0000;
             PC |= read(0xFFFC);
             n_cycles++;
             break;

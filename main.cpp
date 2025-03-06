@@ -161,9 +161,10 @@ class NES
             ppu = std::make_shared<PPU>();
             cart = std::make_shared<Cartridge>();
             apu = std::make_shared<APU>();
-            bus = std::make_shared<Bus>(ppu, cart, apu);
+            bus = std::make_shared<Bus>(ppu, cart, apu, cpu);
 
             cpu->connect_bus(bus);
+            cart->connect_bus(bus);
             ppu->connect_bus(bus);
         }
 
@@ -304,6 +305,9 @@ class NES
             ppu_accumulator = 0;
             pause = false;
             log = "";
+            region = 0;
+            region_info = "NTSC";
+            
         }
 
         void reload_game()

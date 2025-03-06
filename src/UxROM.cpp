@@ -1,5 +1,6 @@
 #include "UxROM.h"
 #include <iostream>
+#include "Cartridge.h"
 
 uint32_t UxROM::cpu_reads(uint16_t address)
 {

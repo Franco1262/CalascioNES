@@ -1,11 +1,11 @@
 #include "AxROM.h"
+#include "Cartridge.h"
 
 uint32_t AxROM::cpu_reads(uint16_t address)
 {
     uint32_t mapped_addr = 0;
    
     mapped_addr = (bank_switching * 0x8000) + (address & 0x7FFF);
-
     return mapped_addr; 
 }
 

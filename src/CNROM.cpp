@@ -1,5 +1,6 @@
 #include "CNROM.h"
 #include <iostream>
+#include "Cartridge.h"
 
 uint32_t CNROM::cpu_reads(uint16_t address)
 {
