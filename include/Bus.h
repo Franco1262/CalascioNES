@@ -56,6 +56,7 @@ class Bus : public std::enable_shared_from_this<Bus>
         void set_irq_enable(bool);
         void set_irq_reload();
         void set_mapper(uint8_t value);
+        void set_mirroring_mode(MIRROR);
         
     private:
         std::shared_ptr<PPU> ppu;

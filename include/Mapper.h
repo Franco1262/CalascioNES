@@ -10,6 +10,7 @@ enum MIRROR
     VERTICAL ,
     ONE_SCREEN_LOWER,
     ONE_SCREEN_UPPER,
+    FOUR_SCREEN
 };
 
 class Cartridge;

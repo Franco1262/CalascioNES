@@ -18,6 +18,7 @@ void AxROM::cpu_writes(uint16_t address, uint8_t value)
 {
     bank_switching = value & 0x7;
     mirroring_mode = ((value & 0x10) > 0) ? MIRROR::ONE_SCREEN_UPPER : MIRROR::ONE_SCREEN_LOWER;
+    cart->set_mirroring_mode(mirroring_mode);
 }
 
 MIRROR AxROM::get_mirroring_mode()

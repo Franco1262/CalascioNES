@@ -49,7 +49,10 @@ void TxROM::cpu_writes(uint16_t address, uint8_t value)
     {
         //On ODD adresses doesnt do anything on MMC3
         if(!(address & 0x1))
-            mirroring_mode = (value & 0x1) ? MIRROR::HORIZONTAL : MIRROR::VERTICAL;             
+        {
+            mirroring_mode = (value & 0x1) ? MIRROR::HORIZONTAL : MIRROR::VERTICAL;
+            cart->set_mirroring_mode(mirroring_mode);
+        }             
     }
 
     if(address >= 0xC000 && address <= 0xDFFF)
@@ -58,6 +61,7 @@ void TxROM::cpu_writes(uint16_t address, uint8_t value)
             cart->set_irq_reload();
         else
             cart->set_irq_latch(value);
+
     }
 
     if(address >= 0xE000 && address <= 0xFFFF)

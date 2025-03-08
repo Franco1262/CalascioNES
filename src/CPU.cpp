@@ -196,11 +196,8 @@ void CPU::fetch()
         opcode = 0x00;
         
     else if(pending_irq && !(P & 0x4))
-    {
         opcode = 0x00;
-        pending_irq = false;
-    }
-
+    
     else
     {
         opcode = read(PC);
@@ -3270,9 +3267,6 @@ void CPU::BRK()
             n_cycles++; 
             break; 
         case 2:
-            if(!NMI)
-                PC++;
-
             write(0x100 + SP, (PC & 0xFF00) >> 8);
             SP--;
             n_cycles++;
@@ -3304,7 +3298,10 @@ void CPU::BRK()
                 NMI = false;
             }
             else
+            {
                 PC |= (read(0xFFFF) << 8);
+                pending_irq = false;
+            }
             n_cycles++;
             break;
     }

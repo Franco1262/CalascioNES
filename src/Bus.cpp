@@ -259,3 +259,8 @@ void Bus::set_mapper(uint8_t value)
 {
     ppu->set_mapper(value);
 }
+
+void Bus::set_mirroring_mode(MIRROR value)
+{
+    ppu->set_mirroring_mode(value);
+}

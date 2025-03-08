@@ -151,6 +151,7 @@ void SxROM::update_state()
             mirroring_mode = MIRROR::HORIZONTAL;
             break;
     }
+    cart->set_mirroring_mode(mirroring_mode);
 }
 
 MIRROR SxROM::get_mirroring_mode()

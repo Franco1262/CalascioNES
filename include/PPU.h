@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "Mapper.h"
 
 
 struct ScanlineCounter
@@ -77,15 +78,26 @@ class PPU
         }
 
         void clock_scanline_counter();
+
         void set_mapper(uint8_t value)
         {
             mapper = value;
         }
+
+        void set_mirroring_mode(MIRROR value)
+        {
+            if(mirroring_mode != MIRROR::FOUR_SCREEN)
+                mirroring_mode = value;
+        }
         
     private:
         int M2_falling_edges = 0;
-        int M2_ppu_cycles = 0;
-        void detect_a12_rising_edge();
+        int ppu_cycles = 0;
+        bool prev_A12 = false;
+        void detect_filtered_A12();
+        int prev_scanline = 0;
+        uint16_t PPU_BUS = 0x0000;
+        MIRROR mirroring_mode = MIRROR::HORIZONTAL;
 
         //PPU Registers
         uint8_t PPUCTRL;
@@ -103,7 +115,7 @@ class PPU
         //Logger logger;
 
 
-        uint8_t nametable[0x0800] = {0}; //VRAM 2kb
+        uint8_t nametable[0x1000] = {0}; //VRAM 2kb
         const uint32_t system_palette[64] = {
                     0x666666FF, 0x002a88FF, 0x1412a7FF, 0x3b00a4FF, 0x5c007eFF, 0x6e0040FF, 0x6c0600FF, 0x561d00FF,
                     0x333500FF, 0x0b4800FF, 0x005200FF, 0x004f08FF, 0x00404dFF, 0x000000FF, 0x000000FF, 0x000000FF,

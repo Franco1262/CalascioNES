@@ -52,31 +52,54 @@ void PPU::tick()
                 {
                     case 0:
                     {
-                        bg_msb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8);
+                        bg_msb = read(PPU_BUS);
                         load_shifters();
                         increment_hori_v(); 
                         if(cycles == 256)
                             increment_vert_v();       
                         break;
                     }
+
+                    case 1:
+                    {
+                        PPU_BUS = (0x2000 | (v & 0x0FFF));
+                    }
                     
                     case 2:
                     {
-                        nametable_id = read((0x2000 | (v & 0x0FFF)));
+                        nametable_id = read(PPU_BUS);
+                        break;
+                    }
+
+                    case 3:
+                    {
+                        PPU_BUS = (0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07));
                         break;
                     }
 
                     case 4:
                     {
-                        attribute = read((0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)));
+                        attribute = read(PPU_BUS);
+                        break;
+                    }
+
+                    case 5:
+                    {
+                        PPU_BUS = (nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12);
                         break;
                     }
 
                     case 6:
                     {
-                        bg_lsb = read((nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12));
+                        bg_lsb = read(PPU_BUS);
                         break;
-                    }     
+                    }
+
+                    case 7:
+                    {
+                        PPU_BUS = (nametable_id * 16) + 0x1000 * ((PPUCTRL & 0x10) > 0) + ((v & 0x7000) >> 12) + 8;
+                        break;
+                    }
                 }
             }
             
@@ -112,45 +135,44 @@ void PPU::tick()
                         scanline_sprite_buffer[(i * 6) + 3] = secondary_oam[(i * 4) + 3];
                         break;
                     case 5: 
+                        {
+                            uint8_t fine_y = (scanline - sprite_y_coord);
+                            PPU_BUS = 0;
+                            if((attribute_sprite & 0x80) && (PPUCTRL & 0x20))
+                                PPU_BUS += 16;
+                                
+                            if(fine_y >= 8 && PPUCTRL & 0x20)
+                            {
+                                if(attribute_sprite & 0x80)
+                                    PPU_BUS -= 16;
+                                else
+                                    PPU_BUS += 16;
+                            }
+                            
+                            
+                            if(attribute_sprite & 0x80)
+                                fine_y = 7 - (fine_y & 0x7);
+        
+                            //8x16 sprites
+                            if(PPUCTRL & 0x20)
+                                PPU_BUS += ((tile_id & 0x1) * 0x1000) + ((tile_id & 0xFE) * 16) + (fine_y & 0x7);
+
+                            //8x8 sprites 
+                            else
+                                PPU_BUS = (((PPUCTRL & 0x8) > 0) * 0x1000) + (tile_id * 16) + (fine_y & 0x7);
+                        }
                         break;
                     case 6:
                     case 0:
-                    {
-                        uint8_t fine_y = (scanline - sprite_y_coord);
-                        uint16_t address = 0x0000;
-    
-                        if((attribute_sprite & 0x80) && (PPUCTRL & 0x20))
-                            address += 16;
-    
-                        if(fine_y >= 8 && PPUCTRL & 0x20)
-                        {
-                            if(attribute_sprite & 0x80)
-                                address -= 16;
-                            else
-                                address += 16;
-                        }
-                        
-                        
-                        if(attribute_sprite & 0x80)
-                            fine_y = 7 - (fine_y & 0x7);
-    
-                        //8x16 sprites
-                        if(PPUCTRL & 0x20)
-                            address += ((tile_id & 0x1) * 0x1000) + ((tile_id & 0xFE) * 16) + (fine_y & 0x7);
-                    
-                        //8x8 sprites 
-                        else
-                            address = (((PPUCTRL & 0x8) > 0) * 0x1000) + (tile_id * 16) + (fine_y & 0x7);
-                                        
-    
+                    {                   
                         if((cycles & 0x7) == 0)
                         {
-                            address += 8;
-                            scanline_sprite_buffer[(i * 6) + 5] = read(address);
+                            PPU_BUS += 8;
+                            scanline_sprite_buffer[(i * 6) + 5] = read(PPU_BUS);
                             i++;
                         }
                         else
-                            scanline_sprite_buffer[(i * 6) + 4] = read(address);  
+                            scanline_sprite_buffer[(i * 6) + 4] = read(PPU_BUS);  
     
                         break;      
                         }
@@ -168,6 +190,9 @@ void PPU::tick()
                 OAMADDR = 0; 
         }
     }
+
+    if(!is_rendering_enabled || (scanline >= 241 && scanline <= 260))
+        PPU_BUS = v;
 
     //When background is disabled draw the ext color
     if(((is_rendering_enabled & 1) == 0) && (scanline < 240) && cycles > 0 && cycles < 257)
@@ -198,7 +223,7 @@ void PPU::tick()
     } 
 
     if(mapper == 4)
-        detect_a12_rising_edge();
+        detect_filtered_A12();
     cycles++;
     if(cycles == 341)
     {
@@ -236,8 +261,20 @@ uint8_t PPU::read(uint16_t address)
     {
         if(address >= 0x3000)
             address -= 0x1000;
+
+        if (mirroring_mode == MIRROR::FOUR_SCREEN)
+        {
+            if (address >= 0x2000 && address < 0x2400)
+                data = nametable[address & 0x3FF];
+            else if (address >= 0x2400 && address < 0x2800)
+                data = nametable[0x400 + (address & 0x3FF)];
+            else if (address >= 0x2800 && address < 0x2C00)
+                data = nametable[0x800 + (address & 0x3FF)];
+            else if (address >= 0x2C00 && address < 0x3000) // Changed upper bound for consistency
+                data = nametable[0xC00 + (address & 0x3FF)];
+        }
             
-        if(bus->getMirror() == MIRROR::HORIZONTAL)
+        else if(mirroring_mode == MIRROR::HORIZONTAL)
         {
             if((address >= 0x2000) && (address < 0x2800))
                 data = nametable[address & 0x3FF]; 
@@ -246,7 +283,7 @@ uint8_t PPU::read(uint16_t address)
                 data = nametable[0x400 + (address & 0x3FF)];                  
         }
         
-         if(bus->getMirror() == MIRROR::VERTICAL)
+        else if(mirroring_mode == MIRROR::VERTICAL)
         {
             if( (address >= 0x2000) && (address < 0x2400))
                 data = nametable[address & 0x3FF];
@@ -257,11 +294,12 @@ uint8_t PPU::read(uint16_t address)
             else if (address >= 0x2C00 && address <= 0x2FFF)
                 data = nametable[0x400 + (address & 0x3FF)];       
         }
+     
 
-        if(bus->getMirror() == MIRROR::ONE_SCREEN_LOWER)
+        else if(mirroring_mode == MIRROR::ONE_SCREEN_LOWER)
             data = nametable[address & 0x3FF];        
 
-        if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
+        else if(mirroring_mode == MIRROR::ONE_SCREEN_UPPER)
             data = nametable[0x400 + (address & 0x3FF)];      
     } 
 
@@ -289,7 +327,20 @@ void PPU::write(uint16_t address, uint8_t value)
     {
         if(address >= 0x3000)
             address -= 0x1000;
-        if(bus->getMirror() == MIRROR::HORIZONTAL)
+
+        if(mirroring_mode == MIRROR::FOUR_SCREEN)
+        {
+            if (address >= 0x2000 && address < 0x2400)
+                nametable[address & 0x3FF] = value;
+            else if (address >= 0x2400 && address < 0x2800)
+                nametable[0x400 + (address & 0x3FF)] = value;
+            else if (address >= 0x2800 && address < 0x2C00)
+                nametable[0x800 + (address & 0x3FF)] = value;
+            else if (address >= 0x2C00 && address < 0x3000)
+                nametable[0xC00 + (address & 0x3FF)] = value;
+        }
+
+        else if(mirroring_mode == MIRROR::HORIZONTAL)
         {
             if((address >= 0x2000) && (address < 0x2800))            
                 nametable[address & 0x3FF] = value;            
@@ -298,7 +349,7 @@ void PPU::write(uint16_t address, uint8_t value)
                 nametable[0x400 + (address & 0x3FF)] = value;                   
         }
         
-         if(bus->getMirror() == MIRROR::VERTICAL)
+        else if(mirroring_mode == MIRROR::VERTICAL)
         {
             if((address >= 0x2000) && (address < 0x2400))
                 nametable[address & 0x3FF] = value;
@@ -308,12 +359,12 @@ void PPU::write(uint16_t address, uint8_t value)
                 nametable[0x400 + (address & 0x3FF)] = value;
             else if (address >= 0x2C00 && address <= 0x2FFF)
                 nametable[0x400 + (address & 0x3FF)] = value;
-        }
+        } 
 
-        if(bus->getMirror() == MIRROR::ONE_SCREEN_LOWER)
+        else if(mirroring_mode == MIRROR::ONE_SCREEN_LOWER)
             nametable[address & 0x3FF] = value;        
 
-        if(bus->getMirror() == MIRROR::ONE_SCREEN_UPPER)
+        else if(mirroring_mode == MIRROR::ONE_SCREEN_UPPER)
             nametable[0x400 + (address & 0x3FF)] = value; 
     }  
 
@@ -1027,39 +1078,40 @@ bool PPU::get_frame() { return frame; }
 
 void PPU::clock_scanline_counter()
 {
-    if(sc.irq_counter == 0 || sc.irq_reload)
-    {
-        sc.irq_counter = sc.irq_latch;
+    if ((sc.irq_counter == 0) || sc.irq_reload) 
+    {     
+        sc.irq_counter = sc.irq_latch; // Reload the counter
         sc.irq_reload = false;
     }
-
     else
         sc.irq_counter--;
 
-    if (sc.irq_counter == 0 && sc.irq_enable)
-    {
-        std::cout << "IRQ FIRED   ";
-        bus->trigger_irq();   
-    }  
+    if (sc.irq_enable && sc.irq_counter == 0)
+        bus->trigger_irq();
 }
 
-void PPU::detect_a12_rising_edge()
+
+void PPU::detect_filtered_A12()
 {
-    if(!(v & 0x1000))
+    bool current_a12 = PPU_BUS & 0x1000;
+    if(!current_a12)
     {
-        M2_ppu_cycles++;
-        if(cycles & 0x3)
+        ppu_cycles++;
+        if(ppu_cycles == 3)
         {
-            M2_ppu_cycles = 0;
+            ppu_cycles = 0;
             M2_falling_edges++; 
         }
     }
 
     else
     {
-        if(M2_falling_edges >= 3)
+        if(!prev_A12 && M2_falling_edges > 2)
             clock_scanline_counter();
+        
         M2_falling_edges = 0;
-        M2_ppu_cycles = 0;
+        ppu_cycles = 0;
     }
+
+    prev_A12 = current_a12;
 }

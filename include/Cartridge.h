@@ -34,6 +34,7 @@ class Cartridge : public std::enable_shared_from_this<Cartridge>
         void set_irq_latch(uint8_t value);
         void set_irq_enable(bool);
         void set_irq_reload();
+        void set_mirroring_mode(MIRROR);
         uint8_t get_mapper();
        
     private:
@@ -59,6 +60,7 @@ class Cartridge : public std::enable_shared_from_this<Cartridge>
             uint8_t misc[3] = {0}; //Unused for now
         } header;
 
+        bool alternative_layout = 0;
         uint16_t n_prg_rom_banks = 0;
         uint16_t n_chr_rom_banks = 0;
         uint16_t mapper_id;

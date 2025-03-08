@@ -56,10 +56,15 @@ void Cartridge::cpu_writes(uint16_t address, uint8_t value)
 
 MIRROR Cartridge::getMirror()
 {
-    if (mapper_id == 1 || mapper_id == 7 || mapper_id == 4) 
+    if ((mapper_id == 1 || mapper_id == 7 || mapper_id == 4) && !alternative_layout) 
         mirror_mode = mapper->get_mirroring_mode();
 
     return mirror_mode;
+}
+
+void Cartridge::set_mirroring_mode(MIRROR value)
+{
+    bus->set_mirroring_mode(value);
 }
 
 bool Cartridge::is_new_instruction() 
@@ -106,6 +111,14 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
 
         // Set mirror mode and ROM bank counts
         mirror_mode = static_cast<MIRROR>(header.flag6 & 0x01);
+        if(header.flag6 & 0x8)
+        {
+            alternative_layout = true;
+            mirror_mode = MIRROR::FOUR_SCREEN;
+        }
+
+        bus->set_mirroring_mode(mirror_mode);
+        
         n_prg_rom_banks = header.prg_rom_lsb;
         n_chr_rom_banks = header.chr_rom_lsb;
 
