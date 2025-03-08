@@ -21,7 +21,7 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 
 ### Controllers
 - [x] Keyboard input
-- [ ] Zapper support
+- [x] Zapper (Partial support)
 
 ### iNES Format Support
 
@@ -31,7 +31,7 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 - [x] Mapper 1 (MMC1)
 - [x] Mapper 3 (CNROM)
 - [x] Mapper 7 (AxROM)
-- [ ] Mapper 4 (MMC3) (coming soon)
+- [x] Mapper 4 (MMC3)
 
 # Visual Examples
 
