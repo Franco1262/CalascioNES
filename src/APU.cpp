@@ -269,8 +269,8 @@ void APU::tick_frame_counter()
                 tick_length_counter();
                 tick_linear_counter();
                 tick_sweep();
-                if(!inhibit_flag)
-                    bus->apu_irq();
+/*                 if(!inhibit_flag) */
+/*                     bus->trigger_irq(); */
                 sequence_step = 0;
                 apu_cycles_counter = 0.0;
             }

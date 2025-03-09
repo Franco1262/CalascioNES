@@ -1,5 +1,11 @@
 #include "Cartridge.h"
 #include "Bus.h"
+#include "NROM.h"
+#include "UxROM.h"
+#include "CNROM.h"
+#include "SxROM.h"
+#include "AxROM.h"
+#include "TxROM.h"
 
 const int PRG_ROM_BANK_SIZE = 0x4000;
 const int CHR_ROM_BANK_SIZE = 0x2000;
@@ -11,66 +17,6 @@ Cartridge::Cartridge() : mapper(nullptr)
 } 
 
 Cartridge::~Cartridge() { }
-
-uint8_t Cartridge::ppu_reads(uint16_t address)
-{
-    uint8_t data;
-
-    if(n_chr_rom_banks == 0)
-        data = CHR_RAM[mapper->ppu_reads(address)];
-       
-    else
-        data = CHR_ROM[mapper->ppu_reads(address)];
-          
-    return data;
-}
-
-void Cartridge::ppu_writes(uint16_t address, uint8_t value)
-{
-    if(n_chr_rom_banks == 0)
-        CHR_RAM[mapper->ppu_reads(address)] = value;
-}
-
-uint8_t Cartridge::cpu_reads(uint16_t address)
-{
-    uint8_t data;
-
-    if(address >= 0x6000 && address < 0x8000)
-        data = PRG_RAM[mapper->cpu_reads(address) & 0x7FFF];
-    
-    else if(address >= 0x8000 && address <= 0xFFFF)
-    {
-        data = PRG_ROM[mapper->cpu_reads(address)];
-    }
-    return data;
-}
-
-void Cartridge::cpu_writes(uint16_t address, uint8_t value)
-{
-    if(address >= 0x6000 && address < 0x8000)
-        PRG_RAM[mapper->cpu_reads(address) & 0x7FFF] = value;
-
-    if(address >= 0x8000 && address <= 0xFFFF)
-        mapper->cpu_writes(address, value);  
-}
-
-MIRROR Cartridge::getMirror()
-{
-    if ((mapper_id == 1 || mapper_id == 7 || mapper_id == 4) && !alternative_layout) 
-        mirror_mode = mapper->get_mirroring_mode();
-
-    return mirror_mode;
-}
-
-void Cartridge::set_mirroring_mode(MIRROR value)
-{
-    bus->set_mirroring_mode(value);
-}
-
-bool Cartridge::is_new_instruction() 
-{ 
-    return bus->is_new_instruction();
-}
 
 bool Cartridge::load_game(const std::string filename, std::string& log)
 {
@@ -191,20 +137,56 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
     return ok;
 }
 
-
-void Cartridge::soft_reset()
+uint8_t Cartridge::ppu_reads(uint16_t address)
 {
-    CHR_RAM.clear();
-    PRG_RAM.clear();
-    CHR_ROM.clear();
-    PRG_ROM.clear();
-    mapper = nullptr;
-    header = Header{};
+    uint8_t data;
+
+    if(n_chr_rom_banks == 0)
+        data = CHR_RAM[mapper->ppu_reads(address)];
+       
+    else
+        data = CHR_ROM[mapper->ppu_reads(address)];
+          
+    return data;
 }
 
-void Cartridge::connect_bus(std::shared_ptr<Bus> bus)
+void Cartridge::ppu_writes(uint16_t address, uint8_t value)
 {
-    this->bus = bus;
+    if(n_chr_rom_banks == 0)
+        CHR_RAM[mapper->ppu_reads(address)] = value;
+}
+
+uint8_t Cartridge::cpu_reads(uint16_t address)
+{
+    uint8_t data;
+
+    if(address >= 0x6000 && address < 0x8000)
+        data = PRG_RAM[mapper->cpu_reads(address) & 0x7FFF];
+    
+    else if(address >= 0x8000 && address <= 0xFFFF)
+    {
+        data = PRG_ROM[mapper->cpu_reads(address)];
+    }
+    return data;
+}
+
+void Cartridge::cpu_writes(uint16_t address, uint8_t value)
+{
+    if(address >= 0x6000 && address < 0x8000)
+        PRG_RAM[mapper->cpu_reads(address) & 0x7FFF] = value;
+
+    if(address >= 0x8000 && address <= 0xFFFF)
+        mapper->cpu_writes(address, value);  
+}
+
+void Cartridge::set_mirroring_mode(MIRROR value)
+{
+    bus->set_mirroring_mode(value);
+}
+
+bool Cartridge::is_new_instruction() 
+{ 
+    return bus->is_new_instruction();
 }
 
 void Cartridge::set_irq_latch(uint8_t value)
@@ -222,7 +204,17 @@ void Cartridge::set_irq_reload()
     bus->set_irq_reload();
 }
 
-uint8_t Cartridge::get_mapper()
+void Cartridge::connect_bus(std::shared_ptr<Bus> bus)
 {
-    return mapper_id;
+    this->bus = bus;
+}
+
+void Cartridge::soft_reset()
+{
+    CHR_RAM.clear();
+    PRG_RAM.clear();
+    CHR_ROM.clear();
+    PRG_ROM.clear();
+    mapper = nullptr;
+    header = Header{};
 }

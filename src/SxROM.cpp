@@ -1,6 +1,5 @@
 #include "SxROM.h"
 #include "Cartridge.h"
-#include <iostream>
 
 SxROM::SxROM(int n_prg_rom_banks, int n_chr_rom_banks, std::shared_ptr<Cartridge> cart) : Mapper(n_prg_rom_banks, n_chr_rom_banks, cart)
 {
@@ -21,8 +20,7 @@ uint32_t SxROM::cpu_reads(uint16_t address)
 
     //PRG RAM
     if(address >= 0x6000 && address < 0x8000)
-        mapped_addr = address & 0x1FFF;
-    
+        mapped_addr = address & (PRG_ROM_BANK_SIZE_8KB-1);
     
     //PRG ROM
     else if(address >= 0x8000 && address <= 0xFFFF)
@@ -31,16 +29,20 @@ uint32_t SxROM::cpu_reads(uint16_t address)
         {
             case 0:
             case 1:
-                mapped_addr = (((prg_bank & 0x1E)) * 0x4000) + (address & 0x7FFF);;
+                mapped_addr = (((prg_bank & 0x1E)) * PRG_ROM_BANK_SIZE_16KB) + (address & (PRG_ROM_BANK_SIZE_32KB-1));;
                 break; 
             case 2:
-                if(address < 0xC000) mapped_addr = address & 0x3FFF;
-                else mapped_addr = ((prg_bank & 0xF) * 0x4000) + (address & 0x3FFF);
+                if(address < 0xC000) 
+                    mapped_addr = address & (PRG_ROM_BANK_SIZE_16KB-1);
+                else 
+                    mapped_addr = ((prg_bank & 0xF) * PRG_ROM_BANK_SIZE_16KB) + (address & (PRG_ROM_BANK_SIZE_16KB-1));
                 break;
 
             case 3:
-                if(address < 0xC000) mapped_addr = ((prg_bank & 0xF) * 0x4000) + (address & 0x3FFF);
-                else mapped_addr = ((n_prg_rom_banks - 1) * 0x4000) + (address & 0x3FFF);
+                if(address < 0xC000) 
+                    mapped_addr = ((prg_bank & 0xF) * PRG_ROM_BANK_SIZE_16KB) + (address & (PRG_ROM_BANK_SIZE_16KB-1));
+                else 
+                    mapped_addr = ((n_prg_rom_banks - 1) * PRG_ROM_BANK_SIZE_16KB) + (address & (PRG_ROM_BANK_SIZE_16KB-1));
                 break;
         }     
     }
@@ -58,15 +60,15 @@ uint32_t SxROM::ppu_reads(uint16_t address)
         if(chr_rom_mode)
         {
             if(address >= 0x0000 && address < 0x1000)
-                mapped_addr = (chr_bank_0 * 0x1000) + (address & 0x0FFF);
+                mapped_addr = (chr_bank_0 * CHR_ROM_BANK_SIZE_4KB) + (address & (CHR_ROM_BANK_SIZE_4KB-1));
 
             else if(address >= 0x1000 && address < 0x2000)
-                mapped_addr = (chr_bank_1 * 0x1000) + (address & 0x0FFF);         
+                mapped_addr = (chr_bank_1 * CHR_ROM_BANK_SIZE_4KB) + (address & (CHR_ROM_BANK_SIZE_4KB-1));         
         }
         else
         {
             if(address >= 0x0000 && address < 0x2000)
-                mapped_addr = ( ((chr_bank_0 & 0xFE)) * 0x1000) + (address & 0x1FFF);
+                mapped_addr = ( ((chr_bank_0 & 0xFE)) * CHR_ROM_BANK_SIZE_4KB) + (address & (CHR_ROM_BANK_SIZE_8KB-1));
         }
     }
     //CHR RAM
@@ -75,13 +77,13 @@ uint32_t SxROM::ppu_reads(uint16_t address)
         if(chr_rom_mode)
         {
             if(address >= 0x0000 && address < 0x1000)
-                mapped_addr = ((chr_bank_0 & 0x1) * 0x1000) + (address & 0x0FFF);
+                mapped_addr = ((chr_bank_0 & 0x1) * CHR_ROM_BANK_SIZE_4KB) + (address & (CHR_ROM_BANK_SIZE_4KB-1));
 
             else if(address >= 0x1000 && address < 0x2000)
-                mapped_addr = ((chr_bank_1 & 0x1) * 0x1000) + (address & 0x0FFF);             
+                mapped_addr = ((chr_bank_1 & 0x1) * CHR_ROM_BANK_SIZE_4KB) + (address & (CHR_ROM_BANK_SIZE_4KB-1));             
         }
         else
-            mapped_addr = address & 0x1FFF;
+            mapped_addr = address & (CHR_ROM_BANK_SIZE_8KB-1);
     }
     
     return mapped_addr;
@@ -99,7 +101,7 @@ void SxROM::cpu_writes(uint16_t address, uint8_t value)
 
     else
     {
-        if(cart->is_new_instruction())
+        if(cart->is_new_instruction()) //Function useful for ignoring sucessive writes inside the same instruction
         {
             shift_register = (shift_register >> 1) | ((value & 1) << 4);
             n_write++;
@@ -152,9 +154,4 @@ void SxROM::update_state()
             break;
     }
     cart->set_mirroring_mode(mirroring_mode);
-}
-
-MIRROR SxROM::get_mirroring_mode()
-{
-    return mirroring_mode;
 }

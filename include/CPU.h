@@ -25,6 +25,7 @@ class CPU
         void soft_reset();
         bool is_new_instruction();
         void trigger_irq();
+        void set_nmi(bool value);
 
     private:
         int cycles = 0;
@@ -64,6 +65,8 @@ class CPU
         uint16_t l = 0x0000;
         bool new_instruction = true;
         bool pending_irq = false;
+        bool pending_NMI = false;
+        bool IRQ = false;;
         
         uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
 
@@ -75,6 +78,9 @@ class CPU
         };
 
         std::vector<CPU::Instruction> Instr;
+
+        void poll_interrupts();
+        bool branch_polled = false;
 
         //Flag instructions
 

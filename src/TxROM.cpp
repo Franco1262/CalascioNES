@@ -17,6 +17,7 @@ TxROM::TxROM(int n_prg_rom_banks, int n_chr_rom_banks, std::shared_ptr<Cartridge
     mirroring_mode = MIRROR::HORIZONTAL;
     irq_latch = 0;
     irq_reload = 0;
+    irq_counter = 0;
 }
 
 void TxROM::cpu_writes(uint16_t address, uint8_t value)
@@ -75,40 +76,35 @@ void TxROM::cpu_writes(uint16_t address, uint8_t value)
 
 uint32_t TxROM::cpu_reads(uint16_t address)
 {
-    uint32_t mapped_address = 0;
-
     if(address >= 0x6000 && address < 0x8000) 
-        mapped_address = address & 0x1FFF;
+        mapped_address = address & (PRG_ROM_BANK_SIZE_8KB-1);
 
     else if(address >= 0x8000 && address <= 0xFFFF)
     {
         if(prg_rom_bank_mode)
         {
             if(address >= 0x8000 && address <= 0x9FFF)
-                mapped_address = ((n_prg_rom_banks-2) * 0x2000) + (address & 0x1FFF);
+                mapped_address = ((n_prg_rom_banks-2) * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if(address >= 0xA000 && address <= 0xBFFF)
-                mapped_address = (R7 * 0x2000) + (address & 0x1FFF);
+                mapped_address = (R7 * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if(address >= 0xC000 && address <= 0xDFFF)
-                mapped_address = (R6 * 0x2000) + (address & 0x1FFF);
+                mapped_address = (R6 * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if(address >= 0xE000 && address <= 0xFFFF)
-                mapped_address = ((n_prg_rom_banks-1) * 0x2000) + (address & 0x1FFF);        
+                mapped_address = ((n_prg_rom_banks-1) * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));        
         }
     
         else
         {
             if((address >= 0x8000) && (address <= 0x9FFF))
-                mapped_address = (R6 * 0x2000) + (address & 0x1FFF);
+                mapped_address = (R6 * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if((address >= 0xA000) && (address <= 0xBFFF))
-                mapped_address = (R7 * 0x2000) + (address & 0x1FFF);
+                mapped_address = (R7 * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if((address >= 0xC000) && (address <= 0xDFFF))
-                mapped_address = ((n_prg_rom_banks-2) * 0x2000) + (address & 0x1FFF);
+                mapped_address = ((n_prg_rom_banks-2) * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));
             if((address >= 0xE000) && (address <= 0xFFFF))
-                mapped_address = ((n_prg_rom_banks-1) * 0x2000) + (address & 0x1FFF);       
+                mapped_address = ((n_prg_rom_banks-1) * PRG_ROM_BANK_SIZE_8KB) + (address & (PRG_ROM_BANK_SIZE_8KB-1));       
         }
     }
-
-    else
-        mapped_address = address;
 
     return mapped_address;
 }
@@ -120,40 +116,34 @@ uint32_t TxROM::ppu_reads(uint16_t address)
     if(chr_inversion)
     {
         if(address >= 0x0000 && address <= 0x03FF)
-            mapped_address = (R2 * 0x400) + (address & 0x3FF);
+            mapped_address = (R2 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x0400 && address <= 0x07FF)
-            mapped_address = (R3 * 0x400) + (address & 0x3FF);
+            mapped_address = (R3 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x0800 && address <= 0x0BFF)
-            mapped_address = (R4 * 0x400) + (address & 0x3FF);
+            mapped_address = (R4 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x0C00 && address <= 0x0FFF)
-            mapped_address = (R5 * 0x400) + (address & 0x3FF);
+            mapped_address = (R5 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x1000 && address <= 0x17FF)
-            mapped_address = (R0 * 0x400) + (address & 0x7FF);
+            mapped_address = (R0 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_2KB-1));
         if(address >= 0x1800 && address <= 0x1FFF)
-            mapped_address = (R1 * 0x400) + (address & 0x7FF);
+            mapped_address = (R1 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_2KB-1));
     }
 
     else
     {
         if(address >= 0x0000 && address <= 0x07FF)
-            mapped_address = (R0 * 0x400) + (address & 0x7FF);
+            mapped_address = (R0 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_2KB-1));
         if(address >= 0x0800 && address <= 0x0FFF)
-            mapped_address = (R1 * 0x400) + (address & 0x7FF);
+            mapped_address = (R1 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_2KB-1));
         if(address >= 0x1000 && address <= 0x13FF)
-            mapped_address = (R2 * 0x400) + (address & 0x3FF);
+            mapped_address = (R2 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x1400 && address <= 0x17FF)
-            mapped_address = (R3 * 0x400) + (address & 0x3FF);
+            mapped_address = (R3 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x1800 && address <= 0x1BFF)
-            mapped_address = (R4 * 0x400) + (address & 0x3FF);
+            mapped_address = (R4 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));
         if(address >= 0x1C00 && address <= 0x1FFF)
-            mapped_address = (R5 * 0x400) + (address & 0x3FF);     
+            mapped_address = (R5 * CHR_ROM_BANK_SIZE_1KB) + (address & (CHR_ROM_BANK_SIZE_1KB-1));     
     }
 
     return mapped_address;
-}
-
-
-MIRROR TxROM::get_mirroring_mode()
-{
-    return mirroring_mode;
 }

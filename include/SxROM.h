@@ -1,9 +1,6 @@
 #pragma once
-#include <iostream>
-#include <cstdint>
 #include "Mapper.h"
-#include "Logger.h"
-#include <sstream>
+
 
 class Cartridge;
 class SxROM : public Mapper
@@ -14,7 +11,6 @@ class SxROM : public Mapper
         uint32_t cpu_reads(uint16_t address);
         uint32_t ppu_reads(uint16_t address);
         void cpu_writes(uint16_t address, uint8_t value);
-        MIRROR get_mirroring_mode();
         void update_state();
     private:
         uint8_t load_register;
@@ -26,7 +22,5 @@ class SxROM : public Mapper
         short n_write;
         uint8_t prg_rom_mode;
         bool chr_rom_mode;
-
         MIRROR mirroring_mode;
-        bool written_on_this_instruction;
 };

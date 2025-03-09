@@ -148,6 +148,26 @@ void CPU::trigger_irq()
     pending_irq = true;
 }
 
+void CPU::set_nmi(bool value)
+{
+    pending_NMI = value;
+}
+
+void CPU::poll_interrupts()
+{
+    if(pending_NMI)
+    {
+        NMI = true;
+        pending_NMI = false;
+    }
+    
+    else if(pending_irq)
+    {
+        IRQ = true;
+        pending_irq = false;
+    }
+}
+
 void CPU::tick()
 {
     get_cycle = !get_cycle;
@@ -168,6 +188,8 @@ void CPU::tick()
     {
         if (n_cycles == 0)
         {
+            if(Instr[opcode].cycles == 2)
+                poll_interrupts();
             fetch();
             new_instruction = true;
         }
@@ -175,19 +197,16 @@ void CPU::tick()
         else if(n_cycles < Instr[opcode].cycles)
         {
             (this->*Instr[opcode].function)();
-            if(n_cycles == (Instr[opcode].cycles-1))
-            {
-                if(bus->get_nmi())
-                    NMI = true;
-            }
+            if(n_cycles == (Instr[opcode].cycles-1) && opcode != 0x00 && !branch_polled)
+                poll_interrupts();
         } 
-        
-        
+             
         if(n_cycles == Instr[opcode].cycles)
+        {
+            branch_polled = false;
             n_cycles = 0;
-        
+        }   
     }
-
 }
 
 void CPU::fetch()
@@ -195,9 +214,9 @@ void CPU::fetch()
     if(NMI)
         opcode = 0x00;
         
-    else if(pending_irq && !(P & 0x4))
+    else if(IRQ && !(P & 0x4))
         opcode = 0x00;
-    
+ 
     else
     {
         opcode = read(PC);
@@ -210,11 +229,10 @@ void CPU::fetch()
             case 0x70:
             case 0x90:
             case 0xB0:
-            case 0xF0:         
-                if(bus->get_nmi())
-                    NMI = true;
+            case 0xF0:
+                branch_polled = true;   
+                poll_interrupts();
                 break;
-
         }
         PC++;
     }
@@ -2981,7 +2999,10 @@ void CPU::BCC()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }         
             break;
         case 3:         
             n_cycles++;
@@ -3006,7 +3027,10 @@ void CPU::BCS()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }              
             break;
         case 3:         
             n_cycles++;
@@ -3033,7 +3057,10 @@ void CPU::BEQ()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }           
             break;
         case 3:         
             n_cycles++;
@@ -3059,7 +3086,10 @@ void CPU::BMI()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }           
             break;
         case 3:         
             n_cycles++;
@@ -3084,7 +3114,10 @@ void CPU::BNE()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }         
             break;
         case 3:         
             n_cycles++;
@@ -3109,7 +3142,10 @@ void CPU::BPL()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }         
             break;
         case 3:         
             n_cycles++;
@@ -3134,7 +3170,10 @@ void CPU::BVC()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }        
             break;
         case 3:         
             n_cycles++;
@@ -3159,7 +3198,10 @@ void CPU::BVS()
             if(high_byte == ((PC & 0xFF00) >> 8))
                 n_cycles+=2;
             else
-                n_cycles++;           
+            {
+                poll_interrupts();
+                n_cycles++;
+            }       
             break;
         case 3:         
             n_cycles++;
@@ -3294,19 +3336,20 @@ void CPU::BRK()
             if(NMI)
             {
                 PC |= (read(0xFFFB) << 8);
-                bus->set_nmi(false);
                 NMI = false;
             }
+
             else
             {
                 PC |= (read(0xFFFF) << 8);
-                pending_irq = false;
+                IRQ = false;
             }
+  
             n_cycles++;
             break;
-    }
-   
+    } 
 }
+
 void CPU::RTI()
 {
     switch(n_cycles)
@@ -3319,8 +3362,7 @@ void CPU::RTI()
         case 3:
             SP++;
             P = read(0x100 + SP);
-            P |= 0x20;
-            P &= 0xEF;
+            P &= 0xFB;
             n_cycles++;
             break;
         case 4:

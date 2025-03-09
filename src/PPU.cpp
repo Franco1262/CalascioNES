@@ -187,7 +187,17 @@ void PPU::tick()
                 draw_sprite_pixel();
             //Clearing OAMADDR
             if( (cycles >= 257) && (cycles <= 320) )
-                OAMADDR = 0; 
+                OAMADDR = 0;
+
+            //Clearing secondary OAM
+            if((cycles > 0) && (cycles < 65) && (scanline < 240))
+            {
+                if(!(cycles & 1))
+                {
+                    secondary_oam[secondary_oam_index] = 0xFF;
+                    secondary_oam_index++;
+                }
+            }
         }
     }
 
@@ -197,16 +207,6 @@ void PPU::tick()
     //When background is disabled draw the ext color
     if(((is_rendering_enabled & 1) == 0) && (scanline < 240) && cycles > 0 && cycles < 257)
         draw_background_pixel();
-
-    //Clearing secondary OAM
-    if((cycles > 0) && (cycles < 65) && (scanline < 240))
-    {
-        if(!(cycles & 1))
-        {
-            secondary_oam[secondary_oam_index] = 0xFF;
-            secondary_oam_index++;
-        }
-    }
     
     //Clear vblank, sprite overflow and sprite 0 flag
     if((scanline == pre_render_scanline) && (cycles == 1))
@@ -914,7 +914,7 @@ std::vector<uint32_t> PPU::get_nametable(int m)
         for(int j = 0; j < 32 ; j++)
         {
             nametable_id = nametable[(m*0x400) + i*32 + j];
-            uint8_t attribute2 = read(0x23C0 + (bus->getMirror() > 0 ? 0x400 : 0x800)*m + j/4 + (i/4)*8);
+            uint8_t attribute2 = read(0x23C0 + (mirroring_mode > 0 ? 0x400 : 0x800)*m + j/4 + (i/4)*8);
             uint8_t x = ((j & 0x3) & 0x2) >> 1;
             uint8_t y = ((i & 0x3) & 0x2) >> 1;
 

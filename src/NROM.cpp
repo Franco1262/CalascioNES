@@ -3,13 +3,8 @@
 
 uint32_t NROM::cpu_reads(uint16_t address)
 {
-    uint16_t mapped_addr;
-
-    if(n_prg_rom_banks == 1)
-        mapped_addr = address  & 0x3FFF;
-    else
-        mapped_addr = address & 0x7FFF;   
-    return mapped_addr; 
+    mapped_address = (n_prg_rom_banks == 1) ? (address & (PRG_ROM_BANK_SIZE_16KB - 1)) : (address & (PRG_ROM_BANK_SIZE_32KB - 1));
+    return mapped_address; 
 }
 
 uint32_t NROM::ppu_reads(uint16_t address)

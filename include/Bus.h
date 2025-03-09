@@ -31,11 +31,7 @@ class Bus : public std::enable_shared_from_this<Bus>
         void ppu_writes(uint16_t address, uint8_t value);
 
         void set_nmi(bool value);
-        bool get_nmi();
-
         bool is_new_instruction();
-
-        MIRROR getMirror();
 
         void set_input(uint16_t state);
         bool get_input();
@@ -45,7 +41,6 @@ class Bus : public std::enable_shared_from_this<Bus>
         void set_light_sensed(bool hit);
         void soft_reset();
         void trigger_irq();
-        void apu_irq();
 
         std::shared_ptr<Bus> get_shared() 
         {

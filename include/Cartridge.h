@@ -3,12 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
-#include "NROM.h"
-#include "UxROM.h"
-#include "CNROM.h"
-#include "SxROM.h"
-#include "AxROM.h"
-#include "TxROM.h"
+#include "Mapper.h"
 
 class Bus;
 class Cartridge : public std::enable_shared_from_this<Cartridge>
@@ -23,7 +18,6 @@ class Cartridge : public std::enable_shared_from_this<Cartridge>
         bool is_new_instruction();
         bool load_game(std::string filename, std::string& log);
         void soft_reset();
-        MIRROR getMirror();
         void connect_bus(std::shared_ptr<Bus> bus);
 
         std::shared_ptr<Cartridge> get_shared() 
@@ -35,7 +29,6 @@ class Cartridge : public std::enable_shared_from_this<Cartridge>
         void set_irq_enable(bool);
         void set_irq_reload();
         void set_mirroring_mode(MIRROR);
-        uint8_t get_mapper();
        
     private:
         std::vector<uint8_t> CHR_ROM; 

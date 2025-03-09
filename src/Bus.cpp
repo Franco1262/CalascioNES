@@ -175,19 +175,9 @@ void Bus::ppu_writes(uint16_t address, uint8_t value)
     cart->ppu_writes(address, value);
 }
 
-MIRROR Bus::getMirror()
-{
-    return cart->getMirror();
-}
-
 void Bus::set_nmi(bool value)
 {
-    NMI = value;
-}
-
-bool Bus::get_nmi()
-{
-    return NMI;
+    cpu->set_nmi(value);
 }
 
 bool Bus::is_new_instruction()
@@ -233,11 +223,6 @@ void Bus::set_light_sensed(bool hit)
 void Bus::trigger_irq()
 {
     cpu->trigger_irq();
-}
-
-void Bus::apu_irq()
-{
-
 }
 
 void Bus::set_irq_latch(uint8_t value)
