@@ -62,6 +62,32 @@ struct Noise
     uint16_t feedback = 0;
 };
 
+struct DMC
+{
+    bool IRQ = false;
+    bool loop = false;
+    uint8_t rate_index = 0;
+    uint16_t rate = 0;
+    uint8_t output_level = 0;
+    uint8_t direct_load = 0;
+    uint16_t sample_address = 0;
+    uint16_t sample_length = 0;
+    uint16_t timer = 0;
+    uint16_t timer_divider = 0;
+
+    //Memory reader
+    uint8_t sample_buffer = 0;
+    uint16_t bytes_remaining = 0;
+    uint16_t current_address = 0;
+
+    //Output unit
+    uint8_t shift_register = 0;
+    uint8_t bits_remaining = 0;
+    bool silence = false;
+
+
+};
+
 class Bus;
 class APU
 {
@@ -91,12 +117,15 @@ class APU
         std::vector<uint8_t> triangle_sequence;
         std::vector<uint16_t> ntsc_noise_period;
         std::vector<uint16_t> pal_noise_period;
+        std::vector<uint16_t> ntsc_dpcm_period;
+        std::vector<uint16_t> pal_dpcm_period;
 
         float apu_cycles_counter = 0.0;
         std::shared_ptr<Bus> bus;
         Pulse pulse1, pulse2;
         Triangle triangle;
         Noise noise;
+        DMC dmc;
         uint8_t status_register = 0;
         bool sequence_mode = 0;
         bool inhibit_flag = 0;

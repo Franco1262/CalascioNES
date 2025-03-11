@@ -201,7 +201,7 @@ void PPU::tick()
         }
     }
 
-    if(!is_rendering_enabled || (scanline >= 241 && scanline <= 260))
+    if(!is_rendering_enabled && (PPUSTATUS & 0x80))
         PPU_BUS = v;
 
     //When background is disabled draw the ext color
@@ -1088,6 +1088,7 @@ void PPU::clock_scanline_counter()
 
     if (sc.irq_enable && sc.irq_counter == 0)
         bus->trigger_irq();
+    
 }
 
 

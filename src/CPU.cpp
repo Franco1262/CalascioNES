@@ -188,9 +188,9 @@ void CPU::tick()
     {
         if (n_cycles == 0)
         {
+            fetch();
             if(Instr[opcode].cycles == 2)
                 poll_interrupts();
-            fetch();
             new_instruction = true;
         }
         

@@ -33,6 +33,19 @@ APU::APU()
         4, 8, 14, 30, 60, 88, 118, 148, 
         188, 236, 354, 472, 708, 944, 1890, 3778
     };
+
+    ntsc_dpcm_period = 
+    {
+        428, 380, 340, 320, 286, 254, 226, 214, 
+        190, 160, 142, 128, 106,  84,  72,  54
+    };
+    
+    pal_dpcm_period = 
+    {
+        398, 354, 316, 298, 276, 236, 210, 198, 
+        176, 148, 132, 118,  98,  78,  66,  50
+    };
+    
     
     
 }
@@ -144,6 +157,24 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             noise.envelope_decay_level_counter = 15;
             noise.start_flag = true;
             break;
+
+        case 0x4010:
+            dmc.IRQ = (value & 0x80) > 0;
+            dmc.loop = (value & 0x40) > 0;
+            dmc.rate_index = value & 0xF;
+            dmc.rate = (region > 0) ? pal_dpcm_period[dmc.rate_index] : ntsc_dpcm_period[dmc.rate_index];
+            break;
+        case 0x4011:
+            dmc.direct_load = value & 0x7F;
+            dmc.output_level = dmc.direct_load;
+            //Check later if im missing something
+            break;
+        case 0x4012:
+            dmc.sample_address = 0xC000 + (value * 64);
+            break;
+        case 0x4013:
+            dmc.sample_length = (value * 16) + 1;
+            break;
         //Used for enabling and disabling individual channels
         case 0x4015:
             status_register = value;
@@ -151,10 +182,24 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             if (!(value & 0x02)) pulse2.length_counter_load = 0;
             if (!(value & 0x04)) triangle.length_counter_load = 0;
             if (!(value & 0x8)) noise.length_counter_load = 0;
+            //TODO: Fix this, this should reload the sample if bits_remaining are not zero
+            if (value & 0x10)
+            {
+                if(dmc.bytes_remaining == 0)
+                {
+                    dmc.current_address = dmc.sample_address;
+                    dmc.bytes_remaining = dmc.sample_length;
+                }         
+            }
+            else
+                dmc.bytes_remaining = 0;
+
+            dmc.IRQ = false;
             break;
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
             inhibit_flag = (value & 0x40) > 0;
+
             if(ceil(apu_cycles_counter) == apu_cycles_counter)
                 delay_write_to_frame_counter = 3;
             else
@@ -197,7 +242,6 @@ void APU::tick()
 {
     apu_cycles_counter += 0.5;
 
-
     if(!region) // NTSC mode
     {          
         if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
@@ -237,6 +281,12 @@ void APU::tick()
             tick_linear_counter();
         }
     }
+
+    //This should load samples and fire an IRQ if certain conditions are met
+    if((dmc.sample_buffer) == 0 && (dmc.bytes_remaining > 0))
+    {
+
+    }
 }
 
 void APU::tick_frame_counter()
@@ -269,8 +319,6 @@ void APU::tick_frame_counter()
                 tick_length_counter();
                 tick_linear_counter();
                 tick_sweep();
-/*                 if(!inhibit_flag) */
-/*                     bus->trigger_irq(); */
                 sequence_step = 0;
                 apu_cycles_counter = 0.0;
             }
@@ -428,6 +476,46 @@ void APU::tick_timers()
     }
     else
         noise.timer_divider--;
+
+    // DMC Output Unit
+    if (dmc.timer_divider == 0)
+    {
+        dmc.timer_divider = dmc.rate;
+
+        if (!dmc.silence)
+        {
+            if (dmc.shift_register & 1)
+            {
+                if (dmc.output_level <= 125)
+                    dmc.output_level += 2;
+            }
+            else
+            {
+                if (dmc.output_level >= 2)
+                    dmc.output_level -= 2;
+            }
+        }
+        
+        dmc.shift_register >>= 1;
+        dmc.bits_remaining--;
+        
+        if (dmc.bits_remaining == 0)
+        {
+            dmc.bits_remaining = 8;
+            if (dmc.sample_buffer == 0)
+            {
+                dmc.silence = true;
+            }
+            else
+            {
+                dmc.silence = false;
+                dmc.shift_register = dmc.sample_buffer;
+                dmc.sample_buffer = 0;
+            }
+        }
+    }
+    else
+        dmc.timer_divider--;
 }
 
 //the pulse number is passed as parameter because the behaviour when change amount is negated differs from one another
