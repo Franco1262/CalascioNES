@@ -166,6 +166,7 @@ class NES
             cpu->connect_bus(bus);
             cart->connect_bus(bus);
             ppu->connect_bus(bus);
+            apu->connect_bus(bus);
         }
 
         bool load_game(std::string filename)

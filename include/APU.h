@@ -74,6 +74,7 @@ struct DMC
     uint16_t sample_length = 0;
     uint16_t timer = 0;
     uint16_t timer_divider = 0;
+    bool interrupt_flag = false;
 
     //Memory reader
     uint8_t sample_buffer = 0;

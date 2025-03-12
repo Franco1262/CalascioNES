@@ -160,6 +160,8 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
 
         case 0x4010:
             dmc.IRQ = (value & 0x80) > 0;
+            if(!dmc.IRQ)
+                dmc.interrupt_flag = false;
             dmc.loop = (value & 0x40) > 0;
             dmc.rate_index = value & 0xF;
             dmc.rate = (region > 0) ? pal_dpcm_period[dmc.rate_index] : ntsc_dpcm_period[dmc.rate_index];
@@ -182,19 +184,21 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
             if (!(value & 0x02)) pulse2.length_counter_load = 0;
             if (!(value & 0x04)) triangle.length_counter_load = 0;
             if (!(value & 0x8)) noise.length_counter_load = 0;
-            //TODO: Fix this, this should reload the sample if bits_remaining are not zero
+            //TODO: Fix this, this should reload the sample if bits_remaining are zero, if they are not zero it should wait until they arent
             if (value & 0x10)
             {
                 if(dmc.bytes_remaining == 0)
                 {
+                    //sample restarted
                     dmc.current_address = dmc.sample_address;
-                    dmc.bytes_remaining = dmc.sample_length;
-                }         
+                    dmc.bytes_remaining = dmc.sample_length;               
+                }
             }
+
             else
                 dmc.bytes_remaining = 0;
 
-            dmc.IRQ = false;
+            dmc.interrupt_flag = false;
             break;
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
@@ -217,10 +221,12 @@ uint8_t APU::cpu_reads(uint16_t address)
     switch(address)
     {
         case 0x4015:
-            value = pulse1.length_counter_load > 0;
+            value |= pulse1.length_counter_load > 0;
             value |= (pulse2.length_counter_load > 0) << 1;
             value |= (triangle.length_counter_load > 0) << 2;
             value |= (noise.length_counter_load > 0) << 3;
+            value |= (dmc.bytes_remaining > 0) << 4;
+            value |= dmc.interrupt_flag << 7;
             return value;
         default:
             return 0;
@@ -282,10 +288,29 @@ void APU::tick()
         }
     }
 
-    //This should load samples and fire an IRQ if certain conditions are met
-    if((dmc.sample_buffer) == 0 && (dmc.bytes_remaining > 0))
+    if((dmc.sample_buffer == 0) && (dmc.bytes_remaining > 0))
     {
+       // bus->trigger_dmc_dma(dmc.current_address, 0); //0 : reload, 1 : load
+        if(dmc.current_address == 0xFFFF)
+            dmc.current_address = 0x8000;
+        else
+            dmc.current_address++;
+        dmc.bytes_remaining--;
+        if(dmc.bytes_remaining == 0 && dmc.loop)
+        {
+            //sample restarted
+            dmc.current_address = dmc.sample_address;
+            dmc.bytes_remaining = dmc.sample_length;
+        }
+        else if(dmc.bytes_remaining == 0 && dmc.IRQ)
+            dmc.interrupt_flag = true;
+    }
 
+    if(dmc.interrupt_flag)
+    {
+        std::cout << "DMC IRQ FIRED";
+        bus->trigger_irq();
+        dmc.interrupt_flag = false;
     }
 }
 
