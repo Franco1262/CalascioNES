@@ -132,7 +132,7 @@ class APU
         bool inhibit_flag = 0;
         uint8_t sequence_step = 0;
         bool region = 0; //0 NTSC |  1 PAL
-
+        bool frame_interrupt = false;
         uint8_t delay_write_to_frame_counter = 0.0;
         bool reset = false;
 };

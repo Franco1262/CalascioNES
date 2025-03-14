@@ -203,6 +203,9 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
             inhibit_flag = (value & 0x40) > 0;
+            if(inhibit_flag)
+                frame_interrupt = false;
+            std::cout << inhibit_flag;
 
             if(ceil(apu_cycles_counter) == apu_cycles_counter)
                 delay_write_to_frame_counter = 3;
@@ -226,7 +229,10 @@ uint8_t APU::cpu_reads(uint16_t address)
             value |= (triangle.length_counter_load > 0) << 2;
             value |= (noise.length_counter_load > 0) << 3;
             value |= (dmc.bytes_remaining > 0) << 4;
+            value |= frame_interrupt << 6;
             value |= dmc.interrupt_flag << 7;
+
+            frame_interrupt = false;
             return value;
         default:
             return 0;
@@ -249,7 +255,13 @@ void APU::tick()
     apu_cycles_counter += 0.5;
 
     if(!region) // NTSC mode
-    {          
+    {   
+
+        if((apu_cycles_counter == 14914 || apu_cycles_counter == 14914.5 || apu_cycles_counter == 0) && !inhibit_flag && !sequence_mode)
+        {
+            frame_interrupt = true;
+        }
+
         if(apu_cycles_counter == 3728.5 || apu_cycles_counter == 7456.5 || apu_cycles_counter == 11185.5 ||
             apu_cycles_counter == 14914.5 || apu_cycles_counter == 18640.5)
         {
@@ -262,6 +274,11 @@ void APU::tick()
             apu_cycles_counter == 16626.5 || apu_cycles_counter == 20782.5)
         {
             tick_frame_counter();  
+        }
+
+        if((apu_cycles_counter == 16626 || apu_cycles_counter == 16626.5 || apu_cycles_counter == 0) && !inhibit_flag && !sequence_mode)
+        {
+            frame_interrupt = true;
         }
     }
 
@@ -308,7 +325,7 @@ void APU::tick()
 
     if(dmc.interrupt_flag)
     {
-        std::cout << "DMC IRQ FIRED";
+        //std::cout << "DMC IRQ FIRED";
         bus->trigger_irq();
         dmc.interrupt_flag = false;
     }
@@ -353,6 +370,12 @@ void APU::tick_frame_counter()
             tick_linear_counter();
             tick_length_counter();
             tick_sweep();
+            if(frame_interrupt && !inhibit_flag)
+            {
+                bus->trigger_irq();
+                //std::cout<< "FRAME INTERRUPT IRQ FIRED" << std::endl;
+            }
+                
             sequence_step = 0;
             apu_cycles_counter = 0.0;
             break;
@@ -476,7 +499,6 @@ void APU::tick_timers()
     else
         pulse1.timer_divider--;
     
-    //if pulse2 enabled
     if(pulse2.timer_divider == 0)
     {
         pulse2.timer_divider = pulse2.timer;
@@ -539,6 +561,7 @@ void APU::tick_timers()
             }
         }
     }
+    
     else
         dmc.timer_divider--;
 }

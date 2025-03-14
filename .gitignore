@@ -12,3 +12,5 @@ nativefiledialog
 *.exe
 imgui
 imgui.ini
+*.o
+Makefile
