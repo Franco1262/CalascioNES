@@ -201,9 +201,6 @@ void PPU::tick()
         }
     }
 
-    if(!is_rendering_enabled && (PPUSTATUS & 0x80))
-        PPU_BUS = v;
-
     //When background is disabled draw the ext color
     if(((is_rendering_enabled & 1) == 0) && (scanline < 240) && cycles > 0 && cycles < 257)
         draw_background_pixel();
@@ -222,6 +219,9 @@ void PPU::tick()
         frame = !frame;   
     } 
 
+    if((PPUSTATUS & 0x80) || !is_rendering_enabled)
+        PPU_BUS = v;
+    
     if(mapper == 4)
         detect_filtered_A12();
     cycles++;
@@ -1087,8 +1087,7 @@ void PPU::clock_scanline_counter()
         sc.irq_counter--;
 
     if (sc.irq_enable && sc.irq_counter == 0)
-        bus->trigger_irq();
-    
+        bus->assert_irq(MMC3);  
 }
 
 
@@ -1096,23 +1095,22 @@ void PPU::detect_filtered_A12()
 {
     bool current_a12 = PPU_BUS & 0x1000;
     if(!current_a12)
-    {
         ppu_cycles++;
-        if(ppu_cycles == 3)
-        {
-            ppu_cycles = 0;
-            M2_falling_edges++; 
-        }
-    }
-
+ 
     else
     {
-        if(!prev_A12 && M2_falling_edges > 2)
+        if(!prev_A12 && ppu_cycles >= 10)
             clock_scanline_counter();
-        
-        M2_falling_edges = 0;
         ppu_cycles = 0;
     }
 
     prev_A12 = current_a12;
+}
+
+void PPU::set_irq_enable(bool value)
+{
+    sc.irq_enable = value;
+    if(!sc.irq_enable)
+        bus->ack_irq(MMC3);
+    
 }

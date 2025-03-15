@@ -129,7 +129,7 @@ class APU
         DMC dmc;
         uint8_t status_register = 0;
         bool sequence_mode = 0;
-        bool inhibit_flag = 0;
+        bool inhibit_flag = 1;
         uint8_t sequence_step = 0;
         bool region = 0; //0 NTSC |  1 PAL
         bool frame_interrupt = false;

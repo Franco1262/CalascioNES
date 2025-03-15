@@ -143,11 +143,6 @@ bool CPU::is_new_instruction()
     return new_instruction;
 }
 
-void CPU::trigger_irq()
-{
-    pending_irq = true;
-}
-
 void CPU::set_nmi(bool value)
 {
     pending_NMI = value;
@@ -161,10 +156,13 @@ void CPU::poll_interrupts()
         pending_NMI = false;
     }
     
-    else if(pending_irq)
+    else if(bus->get_irq())
     {
         IRQ = true;
-        pending_irq = false;
+    }
+    else
+    {
+        IRQ = false;
     }
 }
 
@@ -213,9 +211,12 @@ void CPU::fetch()
 {
     if(NMI)
         opcode = 0x00;
+
         
     else if(IRQ && !(P & 0x4))
         opcode = 0x00;
+    
+    
  
     else
     {
@@ -926,11 +927,10 @@ void CPU::STA_absx()
             break;
         case 3:
             n_cycles++;
+            read(absolute_addr + X);
             break;
         case 4:
-            high_byte = (absolute_addr & 0xFF00) >> 8;
-            low_byte = absolute_addr & 0x00FF;
-            effective_addr = ((high_byte << 8) | low_byte) + X;
+            effective_addr = absolute_addr + X;
             write(effective_addr, Accumulator);
             n_cycles++;
             break;
@@ -948,9 +948,7 @@ void CPU::STA_absy()
             ie_absxy<2>(Y); 
             break;
         case 3:
-            high_byte = (absolute_addr & 0xFF00) >> 8;
-            low_byte = absolute_addr & 0x00FF;
-            effective_addr = ((high_byte << 8) | low_byte) + Y;
+            effective_addr = absolute_addr + Y;
             if(!((effective_addr == 0x2007) && (Y == 0x17)))
                 read(effective_addr);        
             n_cycles++;
@@ -999,9 +997,7 @@ void CPU::STA_indy()
             ie_indy<3>(); 
             break;
         case 4:
-            high_byte = (absolute_addr & 0xFF00) >> 8;
-            low_byte = absolute_addr & 0x00FF;
-            effective_addr = ((high_byte << 8) | low_byte) + Y;
+            effective_addr = absolute_addr + Y;
             n_cycles++;
             break;
         case 5:
@@ -1291,11 +1287,8 @@ void CPU::DEC_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = (high_byte & 0xff) << 8;
-            l = (low_byte & 0xff);
-            effective_addr = (h | l) + X;
+
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -1438,11 +1431,7 @@ void CPU::INC_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = (high_byte & 0xff) << 8;
-            l = (low_byte & 0xff);
-            effective_addr = (h | l) + X;
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -2418,11 +2407,7 @@ void CPU::ASL_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = ((high_byte ) & 0xff) << 8;
-            l = (low_byte ) & 0xff;
-            effective_addr = (h | l) + X;
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -2515,11 +2500,7 @@ void CPU::LSR_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = ((high_byte ) & 0xff) << 8;
-            l = (low_byte ) & 0xff;
-            effective_addr = (h | l) + X;
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -2625,11 +2606,7 @@ void CPU::ROL_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = ((high_byte ) & 0xff) << 8;
-            l = (low_byte ) & 0xff;
-            effective_addr = (h | l) + X;
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -2734,11 +2711,7 @@ void CPU::ROR_absx()
             n_cycles++;
             break;
         case 4:
-            high_byte = ((0xFF00 & absolute_addr) >> 8);
-            low_byte = 0x00FF & absolute_addr;
-            h = ((high_byte ) & 0xff) << 8;
-            l = (low_byte ) & 0xff;
-            effective_addr = (h | l) + X;
+            effective_addr = absolute_addr + X;
             data = read(effective_addr);
             n_cycles++;
             break;
@@ -3319,7 +3292,7 @@ void CPU::BRK()
             n_cycles++;
             break;
         case 4:
-            write(0x100 + SP, P | 0x10);
+            write(0x100 + SP, P);
             P |= 0x04;
             SP--;
             n_cycles++;
@@ -3340,10 +3313,8 @@ void CPU::BRK()
             }
 
             else
-            {
                 PC |= (read(0xFFFF) << 8);
-                IRQ = false;
-            }
+
   
             n_cycles++;
             break;
@@ -3362,7 +3333,6 @@ void CPU::RTI()
         case 3:
             SP++;
             P = read(0x100 + SP);
-            P &= 0xFB;
             n_cycles++;
             break;
         case 4:

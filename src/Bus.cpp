@@ -220,9 +220,19 @@ void Bus::set_light_sensed(bool hit)
     shift_register_controller2 = (shift_register_controller2 & ~(1 << 3)) | (zapper.light_sensed << 3);
 }
 
-void Bus::trigger_irq()
+void Bus::assert_irq(IRQ irq)
 {
-    cpu->trigger_irq();
+    IRQ_line |= irq;
+}
+
+void Bus::ack_irq(IRQ irq)
+{
+    IRQ_line = IRQ_line & (~irq);
+}
+
+uint8_t Bus::get_irq()
+{
+    return IRQ_line;
 }
 
 void Bus::set_irq_latch(uint8_t value)

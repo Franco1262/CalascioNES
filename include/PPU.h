@@ -67,10 +67,7 @@ class PPU
         {
             sc.irq_latch = value;
         }
-        void set_irq_enable(bool value)
-        {
-            sc.irq_enable = value;
-        }
+        void set_irq_enable(bool value);
         void set_irq_reload()
         {
             sc.irq_counter = 0;

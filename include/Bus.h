@@ -4,11 +4,6 @@
 #include "Mapper.h"
 #include "SDL.h"
 
-class PPU;
-class CPU;
-class APU;
-class Cartridge;
-
 struct Zapper
 {
     bool trigger = 0;
@@ -18,6 +13,18 @@ struct Zapper
 
 };
 
+enum IRQ
+{
+    MMC3 = 1,
+    Frame_IRQ = 2,
+    DMC_IRQ = 4
+};
+
+
+class PPU;
+class CPU;
+class APU;
+class Cartridge;
 class Bus : public std::enable_shared_from_this<Bus> 
 {
     public:
@@ -40,7 +47,9 @@ class Bus : public std::enable_shared_from_this<Bus>
         void fire_zapper();
         void set_light_sensed(bool hit);
         void soft_reset();
-        void trigger_irq();
+        void assert_irq(IRQ);
+        void ack_irq(IRQ);
+        uint8_t get_irq();
 
         std::shared_ptr<Bus> get_shared() 
         {
@@ -66,6 +75,8 @@ class Bus : public std::enable_shared_from_this<Bus>
         bool zapper_connected = false;
         bool handle_input;
         bool strobe;
-
+        //xxxx xDFM
+        //M = MMC3, F = Frame interrupt, D = DMC IRQ
+        uint8_t IRQ_line = 0;
         Zapper zapper;
 };

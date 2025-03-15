@@ -45,9 +45,6 @@ APU::APU()
         398, 354, 316, 298, 276, 236, 210, 198, 
         176, 148, 132, 118,  98,  78,  66,  50
     };
-    
-    
-    
 }
 APU::~APU()
 {
@@ -161,7 +158,10 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
         case 0x4010:
             dmc.IRQ = (value & 0x80) > 0;
             if(!dmc.IRQ)
+            {
                 dmc.interrupt_flag = false;
+                bus->ack_irq(DMC_IRQ);
+            }
             dmc.loop = (value & 0x40) > 0;
             dmc.rate_index = value & 0xF;
             dmc.rate = (region > 0) ? pal_dpcm_period[dmc.rate_index] : ntsc_dpcm_period[dmc.rate_index];
@@ -199,13 +199,16 @@ void APU::cpu_writes(uint16_t address, uint8_t value)
                 dmc.bytes_remaining = 0;
 
             dmc.interrupt_flag = false;
+            bus->ack_irq(DMC_IRQ);
             break;
         case 0x4017:
             sequence_mode = (value & 0x80) > 0;
             inhibit_flag = (value & 0x40) > 0;
             if(inhibit_flag)
+            {
                 frame_interrupt = false;
-            std::cout << inhibit_flag;
+                bus->ack_irq(Frame_IRQ);
+            }
 
             if(ceil(apu_cycles_counter) == apu_cycles_counter)
                 delay_write_to_frame_counter = 3;
@@ -233,6 +236,7 @@ uint8_t APU::cpu_reads(uint16_t address)
             value |= dmc.interrupt_flag << 7;
 
             frame_interrupt = false;
+            bus->ack_irq(Frame_IRQ);
             return value;
         default:
             return 0;
@@ -253,10 +257,8 @@ either 4 or 5 steps depending on bit 6 of frame counter ($4017)
 void APU::tick()
 {
     apu_cycles_counter += 0.5;
-
     if(!region) // NTSC mode
     {   
-
         if((apu_cycles_counter == 14914 || apu_cycles_counter == 14914.5 || apu_cycles_counter == 0) && !inhibit_flag && !sequence_mode)
         {
             frame_interrupt = true;
@@ -308,6 +310,7 @@ void APU::tick()
     if((dmc.sample_buffer == 0) && (dmc.bytes_remaining > 0))
     {
        // bus->trigger_dmc_dma(dmc.current_address, 0); //0 : reload, 1 : load
+        //dmc.sample_buffer = 0xff;
         if(dmc.current_address == 0xFFFF)
             dmc.current_address = 0x8000;
         else
@@ -325,9 +328,8 @@ void APU::tick()
 
     if(dmc.interrupt_flag)
     {
-        //std::cout << "DMC IRQ FIRED";
-        bus->trigger_irq();
-        dmc.interrupt_flag = false;
+/*         std::cout << "DMC IRQ ASSERTED" << std::endl;
+        bus->assert_irq(DMC_IRQ); */
     }
 }
 
@@ -357,6 +359,10 @@ void APU::tick_frame_counter()
                 sequence_step++;
             else
             {
+                if(frame_interrupt && !inhibit_flag)
+                    bus->assert_irq(Frame_IRQ);
+                
+      
                 tick_envelope();
                 tick_length_counter();
                 tick_linear_counter();
@@ -370,11 +376,6 @@ void APU::tick_frame_counter()
             tick_linear_counter();
             tick_length_counter();
             tick_sweep();
-            if(frame_interrupt && !inhibit_flag)
-            {
-                bus->trigger_irq();
-                //std::cout<< "FRAME INTERRUPT IRQ FIRED" << std::endl;
-            }
                 
             sequence_step = 0;
             apu_cycles_counter = 0.0;
@@ -788,7 +789,7 @@ void APU::soft_reset()
     // Reset APU control state
     status_register = 0;
     sequence_mode = false;
-    inhibit_flag = false;
+    inhibit_flag = 0;
     sequence_step = 0;
     delay_write_to_frame_counter = 0;
     reset = false;
