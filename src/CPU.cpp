@@ -156,7 +156,7 @@ void CPU::poll_interrupts()
         pending_NMI = false;
     }
     
-    else if(bus->get_irq())
+    else if(bus->get_irq() && !(P & 0x4))
     {
         IRQ = true;
     }
