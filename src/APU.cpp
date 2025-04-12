@@ -287,6 +287,7 @@ void APU::tick()
     //Every apu cycle...
     if(ceil(apu_cycles_counter) == apu_cycles_counter)
         tick_timers();
+    
 
     //On every cpu cycle clock triangle's timer
     tick_triangle_timer();
@@ -306,6 +307,11 @@ void APU::tick()
             tick_linear_counter();
         }
     }
+}
+
+void APU::tick_dmc()
+{
+    //DMC Memory read
 
     if((dmc.sample_buffer == 0) && (dmc.bytes_remaining > 0))
     {
@@ -326,11 +332,47 @@ void APU::tick()
             dmc.interrupt_flag = true;
     }
 
-    if(dmc.interrupt_flag)
+
+    // DMC Output Unit
+    if (dmc.timer_divider == 0)
     {
-/*         std::cout << "DMC IRQ ASSERTED" << std::endl;
-        bus->assert_irq(DMC_IRQ); */
+        dmc.timer_divider = dmc.rate;
+
+        if (!dmc.silence)
+        {
+            if (dmc.shift_register & 1)
+            {
+                if (dmc.output_level <= 125)
+                    dmc.output_level += 2;
+            }
+            else
+            {
+                if (dmc.output_level >= 2)
+                    dmc.output_level -= 2;
+            }
+        }
+        
+        dmc.shift_register >>= 1;
+        dmc.bits_remaining--;
+        
+        if (dmc.bits_remaining == 0)
+        {
+            dmc.bits_remaining = 8;
+            if (dmc.sample_buffer == 0)
+            {
+                dmc.silence = true;
+            }
+            else
+            {
+                dmc.silence = false;
+                dmc.shift_register = dmc.sample_buffer;
+                dmc.sample_buffer = 0;
+            }
+        }
     }
+    
+    else
+        dmc.timer_divider--; 
 }
 
 void APU::tick_frame_counter()
@@ -524,47 +566,6 @@ void APU::tick_timers()
     }
     else
         noise.timer_divider--;
-
-    // DMC Output Unit
-    if (dmc.timer_divider == 0)
-    {
-        dmc.timer_divider = dmc.rate;
-
-        if (!dmc.silence)
-        {
-            if (dmc.shift_register & 1)
-            {
-                if (dmc.output_level <= 125)
-                    dmc.output_level += 2;
-            }
-            else
-            {
-                if (dmc.output_level >= 2)
-                    dmc.output_level -= 2;
-            }
-        }
-        
-        dmc.shift_register >>= 1;
-        dmc.bits_remaining--;
-        
-        if (dmc.bits_remaining == 0)
-        {
-            dmc.bits_remaining = 8;
-            if (dmc.sample_buffer == 0)
-            {
-                dmc.silence = true;
-            }
-            else
-            {
-                dmc.silence = false;
-                dmc.shift_register = dmc.sample_buffer;
-                dmc.sample_buffer = 0;
-            }
-        }
-    }
-    
-    else
-        dmc.timer_divider--;
 }
 
 //the pulse number is passed as parameter because the behaviour when change amount is negated differs from one another

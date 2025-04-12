@@ -118,6 +118,7 @@ bool Cartridge::load_game(const std::string filename, std::string& log)
             case 4: mapper = std::make_unique<TxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
             case 1: mapper = std::make_unique<SxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
             case 7: mapper = std::make_unique<AxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
+            case 71: mapper = std::make_unique<UxROM>(n_prg_rom_banks, n_chr_rom_banks, shared_from_this()); break;
             default:
                 log = std::string("Error: Unsupported mapper ID ") + std::to_string((int)mapper_id);
                 ok =  false;

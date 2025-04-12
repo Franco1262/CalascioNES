@@ -407,10 +407,14 @@ uint8_t PPU::cpu_reads(uint16_t address)
         case 3: {data = open_bus; break; }
         case 4: 
         {
-            data = OAM[OAMADDR];
-            open_bus = data;
-            if(scanline == pre_render_scanline && (cycles > 0) && (cycles < 65))
-                data = 0xFF;
+            if(!is_rendering_enabled)
+            {
+                data = OAM[OAMADDR];
+                open_bus = data;
+            }
+            else
+                data = secondary_oam[0];
+
             break; 
         }
         case 5: {data = open_bus; break; }
@@ -812,14 +816,14 @@ void PPU::draw_background_pixel()
     //if background is enabled in the leftmost 8 pixels...
     if( !(!(PPUMASK & 0x2) && ((cycles-1) < 8)) )
     {
-        if((PPUMASK & 0x8))
+        if(is_rendering_enabled & 0x1) //if background rendering is enabled
         {
             screen[index] = system_palette[get_palette_color(palette_index, pixel)];
             scanline_buffer[cycles - 1] = pixel;
         }
-        else
+        else if(!is_rendering_enabled) //When rendering is disabled show backdrop color
         {
-            screen[index] = system_palette[get_palette_color(0, 0)];
+            screen[index] = system_palette[get_palette_color(0, 0)]; //Normally draw backdrop color but...
 
             if(!is_rendering_enabled && (v >= 0x3F00) && (v <= 0x3FFF))
                     screen[index] = system_palette[read(v)];     

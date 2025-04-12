@@ -112,6 +112,7 @@ class APU
         void calculate_target_period_pulse(Pulse &pulse, int npulse);
         void tick_triangle_timer();
         void tick_linear_counter();
+        void tick_dmc();
 
         std::vector<uint8_t> sequence_lookup_table;
         std::vector<uint8_t> length_counter_lookup_table;

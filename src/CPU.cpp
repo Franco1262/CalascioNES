@@ -160,10 +160,6 @@ void CPU::poll_interrupts()
     {
         IRQ = true;
     }
-    else
-    {
-        IRQ = false;
-    }
 }
 
 void CPU::tick()
@@ -187,7 +183,7 @@ void CPU::tick()
         if (n_cycles == 0)
         {
             fetch();
-            if(Instr[opcode].cycles == 2)
+            if(Instr[opcode].cycles == 2) //2 cycles instructions poll at the end of the first cycle
                 poll_interrupts();
             new_instruction = true;
         }
@@ -195,8 +191,10 @@ void CPU::tick()
         else if(n_cycles < Instr[opcode].cycles)
         {
             (this->*Instr[opcode].function)();
-            if(n_cycles == (Instr[opcode].cycles-1) && opcode != 0x00 && !branch_polled)
-                poll_interrupts();
+            if(n_cycles == (Instr[opcode].cycles-1) && opcode != 0x00 && !branch_polled) // Poll interrupts during the second to last cycle. interrupts dont poll
+                poll_interrupts();                                                       //Branch instructions poll differently
+            else if(branch_polled && n_cycles == 3) //if a branch instruction is being polled and an additional cycle is needed
+                poll_interrupts();   
         } 
              
         if(n_cycles == Instr[opcode].cycles)
@@ -212,28 +210,24 @@ void CPU::fetch()
     if(NMI)
         opcode = 0x00;
 
-        
-    else if(IRQ && !(P & 0x4))
+    else if(IRQ)
         opcode = 0x00;
     
-    
- 
     else
     {
         opcode = read(PC);
         switch(opcode)
         {
+            case 0x90:
+            case 0xB0:
+            case 0xF0:
             case 0x30:
             case 0xD0:
             case 0x10:
             case 0x50:
             case 0x70:
-            case 0x90:
-            case 0xB0:
-            case 0xF0:
-                branch_polled = true;   
+                branch_polled = true;
                 poll_interrupts();
-                break;
         }
         PC++;
     }
@@ -255,10 +249,7 @@ void CPU::upd_negative_zero_flags(uint8_t byte)
     P = (P  & 0x7F) | (byte & 0x80);
 }
 
-
-
 //Addressing modes for instructions that perform operations inside the cpu
-
 template <unsigned C>
 void CPU::ie_zeropage()
 {
@@ -2973,7 +2964,6 @@ void CPU::BCC()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }         
             break;
@@ -3001,7 +2991,6 @@ void CPU::BCS()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }              
             break;
@@ -3031,7 +3020,6 @@ void CPU::BEQ()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }           
             break;
@@ -3060,7 +3048,6 @@ void CPU::BMI()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }           
             break;
@@ -3088,7 +3075,6 @@ void CPU::BNE()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }         
             break;
@@ -3116,7 +3102,6 @@ void CPU::BPL()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }         
             break;
@@ -3144,7 +3129,6 @@ void CPU::BVC()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }        
             break;
@@ -3172,7 +3156,6 @@ void CPU::BVS()
                 n_cycles+=2;
             else
             {
-                poll_interrupts();
                 n_cycles++;
             }       
             break;
@@ -3313,7 +3296,10 @@ void CPU::BRK()
             }
 
             else
+            {
+                IRQ = false;
                 PC |= (read(0xFFFF) << 8);
+            }
 
   
             n_cycles++;
