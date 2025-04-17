@@ -41,8 +41,6 @@ This NES emulator, written in C++, serves as a learning project to explore the i
 
 ![image](https://github.com/user-attachments/assets/f555db1d-a293-4058-a9b5-f3efbf6c6f55)
 
-https://github.com/user-attachments/assets/e5b3fd82-0645-4a24-a55c-0e3d55a86c56
-
 
 
 
