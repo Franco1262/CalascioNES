@@ -1,6 +1,6 @@
 # NES Emulator in C++
 
-This NES emulator, written in C++, serves as a learning project to explore the inner workings of the Nintendo Entertainment System. It integrates a cycle-accurate MOS 6502 CPU, the Picture Processing Unit (PPU), and will soon feature the Audio Processing Unit (APU) to replicate the core functionality of the NES hardware. The aim of this project is to deepen the understanding of emulation concepts by recreating the essential components of the NES system and executing games in a controlled, software-driven environment.
+This NES emulator, written in C++, serves as a learning project to explore the inner workings of the Nintendo Entertainment System. It integrates a cycle-accurate MOS 6502 CPU, the Picture Processing Unit (PPU) and the Audio Processing Unit (APU) to replicate the core functionality of the NES hardware. The aim of this project is to deepen the understanding of emulation concepts by recreating the essential components of the NES system and executing games in a controlled, software-driven environment.
 
 # Features Implemented
 
