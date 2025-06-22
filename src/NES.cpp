@@ -36,7 +36,7 @@ bool NES::load_game(std::string filename)
         old_game_filename = filename;           
         reset();
         if(cart->load_game(filename, log))
-            game_loaded = true;
+            game_loaded = true; 
         if(std::filesystem::is_regular_file(log))
         {
             log = std::filesystem::path(log).stem().string();

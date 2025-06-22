@@ -4,7 +4,6 @@
 #include "Cartridge.h"
 #include "Bus.h"
 
-
 class NES
 {
     public:
