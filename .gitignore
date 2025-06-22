@@ -13,4 +13,3 @@ nativefiledialog
 imgui
 imgui.ini
 *.o
-Makefile
