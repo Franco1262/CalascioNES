@@ -9,11 +9,8 @@
 #include "windows.h"
 
 // NES Emulator Components
-#include "CPU.h"
-#include "PPU.h"
-#include "APU.h"
-#include "Cartridge.h"
-#include "Bus.h"
+#include "NES.h"
+
 
 // UI and Rendering
 #include "nfd.h"
@@ -26,22 +23,11 @@ constexpr int SCALE = 3;
 constexpr int SCREEN_WIDTH = 256 * SCALE;
 constexpr int SCREEN_HEIGHT = 240 * SCALE;
 
-// Clock Rates
-const double MASTER_CLOCK_NTSC = 236250000.0 / 11.0;
-const double MASTER_CLOCK_PAL = 26601712.5;
-const double CPU_CLOCK_NTSC = MASTER_CLOCK_NTSC / 12.0;
-const double CPU_CLOCK_PAL = MASTER_CLOCK_PAL / 16.0;
-const double SAMPLE_RATE = 44100.0;
-
-// APU Ratios
-const double apu_ratio_NTSC = CPU_CLOCK_NTSC / SAMPLE_RATE;
-const double apu_ratio_PAL = CPU_CLOCK_PAL / SAMPLE_RATE;
-
 // Audio Buffer
 constexpr int BUFFER_SIZE = 8192;
 int16_t audio_buffer[BUFFER_SIZE];
-uint16_t read_pos = 0;
 uint16_t write_pos = 0;
+uint16_t read_pos = 0;
 
 // Emulator State
 bool game_not_initialized = true;
@@ -152,234 +138,6 @@ class SDL_manager
         SDL_AudioDeviceID audio_device;
 };
 
-class NES
-{
-    public:
-        NES()
-        {
-            cpu = std::make_shared<CPU>();
-            ppu = std::make_shared<PPU>();
-            cart = std::make_shared<Cartridge>();
-            apu = std::make_shared<APU>();
-            bus = std::make_shared<Bus>(ppu, cart, apu, cpu);
-
-            cpu->connect_bus(bus);
-            cart->connect_bus(bus);
-            ppu->connect_bus(bus);
-            apu->connect_bus(bus);
-        }
-
-        bool load_game(std::string filename)
-        {
-            reset_flag = true;
-            std::string extension = std::filesystem::path(filename).extension().string();
-            if(extension == ".nes" || extension == ".NES")
-            {
-                old_game_filename = filename;           
-                reset();
-                if(cart->load_game(filename, log))
-                    game_loaded = true;
-                if(std::filesystem::is_regular_file(log))
-                {
-                    log = std::filesystem::path(log).stem().string();
-                    if(log.length() > 50)
-                        log = log.substr(0, 50) + "...";
-                    game_title = log;
-                    game_not_initialized = false;
-                }
-            }
-
-            else
-                log = std::string("File does not have .nes extension");
-            reset_flag = false;
-            return game_loaded;
-        }
-
-        void run_frame()
-        {
-            current_frame = ppu->get_frame();
-        
-            while (current_frame == ppu->get_frame() && !pause && !reset_flag) 
-            {          
-                //NTSC NES
-                if(!region)
-                {
-                    cpu->tick();
-                    apu->tick();
-
-                    apu_cycle_accumulator += 1;
-        
-                    if (apu_cycle_accumulator >= apu_ratio_NTSC) // 1 audio sample every 40.584 APU cycles
-                    {
-                        double alpha = apu_cycle_accumulator - apu_ratio_NTSC;
-                        double previous_sample = last_sample;
-                        double current_sample = apu->get_output();
-                        
-                        // Linear interpolation
-                        double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
-                        {
-                            audio_buffer[write_pos] = interpolated_sample * 32767;
-                            write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
-                        }
-            
-                        last_sample = current_sample;
-                        apu_cycle_accumulator -= apu_ratio_NTSC;
-                    }
-
-                    ppu->tick();
-                    ppu->tick();
-                    ppu->tick();
-                }
-
-                else //PAL NES
-                {
-                    cpu->tick();
-                    apu->tick();
-
-                    apu_cycle_accumulator += 1;
-        
-                    if (apu_cycle_accumulator >= apu_ratio_PAL) // 1 audio sample every 40.584 APU cycles
-                    {
-                        double alpha = apu_cycle_accumulator - apu_ratio_PAL;
-                        double previous_sample = last_sample;
-                        double current_sample = apu->get_output();
-                        
-                        // Linear interpolation
-                        double interpolated_sample = (previous_sample * (1.0 - alpha)) +( current_sample * alpha);
-                        {
-                            audio_buffer[write_pos] = interpolated_sample * 32767;
-                            write_pos = (write_pos+1) & (BUFFER_SIZE - 1);
-                        }
-            
-                        last_sample = current_sample;
-                        apu_cycle_accumulator -= apu_ratio_PAL;
-                    }
-
-                    ppu_accumulator += 3.2;
-                    while (ppu_accumulator >= 1.0)
-                    { 
-                        ppu->tick();
-                        ppu_accumulator -= 1.0;
-                    }              
-                }        
-            }
-        }
-        
-
-        inline void change_pause(SDL_AudioDeviceID audio_device)
-        {
-            pause = !pause;
-            SDL_PauseAudioDevice(audio_device, pause);
-        }
-
-        inline void change_timing()
-        {
-            region = !region;
-            region_info = (region) ? "PAL" : "NTSC";
-            ppu->set_ppu_timing(region);
-            apu->set_timing(region);                       
-        }
-
-        inline bool is_game_loaded()
-        {
-            return game_loaded;
-        }
-
-        inline std::shared_ptr<PPU> get_ppu()
-        {
-            return ppu;
-        }
-
-        inline std::shared_ptr<CPU> get_cpu()
-        {
-            return cpu;
-        }
-
-        void reset()
-        {
-            cpu->soft_reset();
-            ppu->soft_reset();
-            cart->soft_reset();
-            bus->soft_reset();
-            apu->soft_reset();
-            game_loaded = false;
-            ppu_accumulator = 0;
-            pause = false;
-            log = "";
-            region = 0;
-            region_info = "NTSC";
-            
-        }
-
-        void reload_game()
-        {
-            reset_flag = true;
-            reset();
-            load_game(old_game_filename);
-            reset_flag = false;
-        }
-
-        void alternate_zapper()
-        {
-            zapper_connected = !zapper_connected;
-            bus->set_zapper(zapper_connected);
-        }
-
-        bool get_zapper()
-        {
-            return zapper_connected;
-        }
-
-        void send_mouse_coordinates(int x, int y)
-        {
-            bus->update_zapper_coordinates(x, y);
-        }
-
-        void fire_zapper()
-        {
-            bus->fire_zapper();
-        }
-
-        std::string get_log()
-        {
-            return log;
-        }
-        
-        bool get_region()
-        {
-            return region;
-        }
-
-        std::string get_info()
-        {
-            std::string info = " | Game: " + game_title + " | Active region: " + region_info;
-            return info;
-        }
-
-
-
-    private:
-        std::shared_ptr<CPU> cpu;
-        std::shared_ptr<PPU> ppu;
-        std::shared_ptr<APU> apu;
-        std::shared_ptr<Cartridge> cart;
-        std::shared_ptr<Bus> bus;
-        bool current_frame;
-        float ppu_accumulator = 0.0;
-        bool region = 0; // 0: NTSC, 1: PAL
-        bool pause = false;
-        bool game_loaded = false;
-        std::string old_game_filename;
-        std::string log;
-        bool zapper_connected = false;
-        double apu_cycle_accumulator = 0;
-        double last_sample = 0;
-        bool reset_flag = false;
-        std::string game_title = "";
-        std::string region_info = "NTSC";
-
-};
-
 //SDL2
 void destroy_textures();
 void handle_events(NES* nes, SDL_manager* manager);
@@ -396,6 +154,7 @@ void emulate_nes(NES * nes, SDL_manager* manager);
 int main(int argc, char *argv[])
 {
     NES nes;
+    nes.set_audio_buffer(audio_buffer, BUFFER_SIZE, &write_pos);
     SDL_manager manager;
     if(argc > 1)
     {
@@ -507,7 +266,6 @@ void audio_callback(void* userdata, Uint8* stream, int len)
     int16_t* output = reinterpret_cast<int16_t*>(stream);
     int samples_needed = len / sizeof(int16_t);
     int available_data = 0;
-
     available_data = (write_pos >= read_pos) ? (write_pos - read_pos) : ((BUFFER_SIZE - read_pos) + write_pos);
 
     if (available_data >= samples_needed) 

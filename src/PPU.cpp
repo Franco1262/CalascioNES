@@ -1116,5 +1116,4 @@ void PPU::set_irq_enable(bool value)
     sc.irq_enable = value;
     if(!sc.irq_enable)
         bus->ack_irq(MMC3);
-    
 }

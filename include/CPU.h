@@ -13,13 +13,7 @@ class CPU
         CPU();
         ~CPU();
         void tick();
-        bool open_file(std::string name);
-        void load(int);
-        bool finished();
-        bool finish = false;
-        bool compare(int line);
         void connect_bus(std::shared_ptr<Bus> bus);
-        uint8_t get_opcode();
 
         void reset();
         void soft_reset();
@@ -28,7 +22,7 @@ class CPU
         void set_nmi(bool value);
 
     private:
-        int cycles = 0;
+        int cycles;
         uint8_t opcode;
         std::shared_ptr<Bus> bus;
         bool start_logging = false;
@@ -50,23 +44,21 @@ class CPU
         bool reset_flag;
         bool NMI = false;
         uint16_t jmp_address;
-        uint16_t rel_address;
-        uint16_t subroutine_address = 0x0000;
-        uint16_t zero_page_addr = 0x0000;
-        uint16_t absolute_addr = 0x0000;
-        uint16_t effective_addr = 0x0000;
-        bool page_crossing = true;
-        uint8_t n_cycles = 0;
-        int8_t offset = 0x00;     
+        uint16_t subroutine_address;
+        uint16_t zero_page_addr;
+        uint16_t absolute_addr;
+        uint16_t effective_addr;
+        bool page_crossing;
+        uint8_t n_cycles;
+        int8_t offset;     
         uint8_t data;
         uint8_t high_byte;
         uint8_t low_byte;
-        uint16_t h = 0x0000;
-        uint16_t l = 0x0000;
-        bool new_instruction = true;
-        bool pending_irq = false;
-        bool pending_NMI = false;
-        bool IRQ = false;;
+        uint16_t h;
+        uint16_t l;
+        bool new_instruction;
+        bool pending_NMI;
+        bool IRQ;
         
         uint8_t memory[0x800] = {0}; //2kb ram internal to cpu
 

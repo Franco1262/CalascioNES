@@ -73,13 +73,117 @@ CPU::CPU()
         {0xFC, &CPU::XXX, 4 },     {0xFD, &CPU::SBC_absx, 5 },    {0xFE, &CPU::INC_absx, 7 },    {0xFF, &CPU::XXX, 7},
     };
 
-    get_cycle = false;
-    n_cycles = 0;
-    PC = 0x0000;
-    reset_flag = true;
-    oamdma_flag = false;
+        cycles = 0;
+        opcode = 0;
+        //Registers
+        Accumulator = 0;
+        X = 0;
+        Y = 0;
+        PC = 0; //Program counter
+        SP = 0; //Stack pointer
+        P = 0; //Status register
+        OAMDMA = 0;
+
+        oamdma_flag = 0;
+        halt_cycle = 0;
+        get_cycle = 0;
+        alignment_needed = 0;
+        dma_read = 0;
+        dma_address = 0;
+        reset_flag = 0;
+        NMI = false;
+        jmp_address = 0;
+        subroutine_address = 0;
+        zero_page_addr = 0;
+        absolute_addr = 0;
+        effective_addr = 0;
+        page_crossing = 0;
+        n_cycles = 0;
+        offset = 00;     
+        data = 0;
+        high_byte = 0;
+        low_byte = 0;
+        h = 0;
+        l = 0;
+        new_instruction = true;
+        pending_NMI = false;
+        IRQ = false;
 }
+
 CPU::~CPU() {}
+
+void CPU::tick()
+{
+    get_cycle = !get_cycle;
+    if(reset_flag)
+        reset();
+
+    else if(oamdma_flag)
+    {
+        if(halt_cycle)
+            halt_cycle = false;
+        else if(alignment_needed)
+            alignment_needed = false;
+        else
+            transfer_oam_bytes();  
+    }   
+    
+    else
+    {
+        if (n_cycles == 0)
+        {
+            fetch();
+            if(Instr[opcode].cycles == 2) //2 cycles instructions poll at the end of the first cycle
+                poll_interrupts();
+            new_instruction = true;
+        }
+        
+        else if(n_cycles < Instr[opcode].cycles)
+        {
+            (this->*Instr[opcode].function)();
+            if(n_cycles == (Instr[opcode].cycles-1) && opcode != 0x00 && !branch_polled) // Poll interrupts during the second to last cycle. interrupts dont poll
+                poll_interrupts();                                                       //Branch instructions poll differently
+            else if(branch_polled && n_cycles == 3) //if a branch instruction is being polled and an additional cycle is needed
+                poll_interrupts();   
+        } 
+             
+        if(n_cycles == Instr[opcode].cycles)
+        {
+            branch_polled = false;
+            n_cycles = 0;
+        }   
+    }
+}
+
+void CPU::fetch()
+{
+    if(NMI)
+        opcode = 0x00;
+
+    else if(IRQ)
+        opcode = 0x00;
+    
+    else
+    {
+        opcode = read(PC);
+        switch(opcode)
+        {
+            case 0x90:
+            case 0xB0:
+            case 0xF0:
+            case 0x30:
+            case 0xD0:
+            case 0x10:
+            case 0x50:
+            case 0x70:
+                branch_polled = true;
+                poll_interrupts();
+        }
+        PC++;
+    }
+
+    n_cycles++;
+}
 
 void CPU::write(uint16_t address, uint8_t value)
 {
@@ -160,84 +264,6 @@ void CPU::poll_interrupts()
     {
         IRQ = true;
     }
-}
-
-void CPU::tick()
-{
-    get_cycle = !get_cycle;
-    if(reset_flag)
-        reset();
-
-    else if(oamdma_flag)
-    {
-        if(halt_cycle)
-            halt_cycle = false;
-        else if(alignment_needed)
-            alignment_needed = false;
-        else
-            transfer_oam_bytes();  
-    }   
-    
-    else
-    {
-        if (n_cycles == 0)
-        {
-            fetch();
-            if(Instr[opcode].cycles == 2) //2 cycles instructions poll at the end of the first cycle
-                poll_interrupts();
-            new_instruction = true;
-        }
-        
-        else if(n_cycles < Instr[opcode].cycles)
-        {
-            (this->*Instr[opcode].function)();
-            if(n_cycles == (Instr[opcode].cycles-1) && opcode != 0x00 && !branch_polled) // Poll interrupts during the second to last cycle. interrupts dont poll
-                poll_interrupts();                                                       //Branch instructions poll differently
-            else if(branch_polled && n_cycles == 3) //if a branch instruction is being polled and an additional cycle is needed
-                poll_interrupts();   
-        } 
-             
-        if(n_cycles == Instr[opcode].cycles)
-        {
-            branch_polled = false;
-            n_cycles = 0;
-        }   
-    }
-}
-
-void CPU::fetch()
-{
-    if(NMI)
-        opcode = 0x00;
-
-    else if(IRQ)
-        opcode = 0x00;
-    
-    else
-    {
-        opcode = read(PC);
-        switch(opcode)
-        {
-            case 0x90:
-            case 0xB0:
-            case 0xF0:
-            case 0x30:
-            case 0xD0:
-            case 0x10:
-            case 0x50:
-            case 0x70:
-                branch_polled = true;
-                poll_interrupts();
-        }
-        PC++;
-    }
-
-    n_cycles++;
-}
-
-uint8_t CPU::get_opcode()
-{
-    return opcode;
 }
 
 void CPU::upd_negative_zero_flags(uint8_t byte)
@@ -3446,7 +3472,6 @@ void CPU::soft_reset()
 
     // Reset addressing and operation-related variables
     jmp_address = 0x0000;
-    rel_address = 0x0000;
     subroutine_address = 0x0000;
     zero_page_addr = 0x0000;
     absolute_addr = 0x0000;
